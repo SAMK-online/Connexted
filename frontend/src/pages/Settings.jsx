@@ -1,10 +1,13 @@
 export default function Settings() {
   return (
     <section className="stack">
-      <header className="page-header">
+      <header className="page-header hero-card">
         <div>
           <p className="eyebrow">Admin</p>
           <h2>Playbooks, style profiles, and integrations</h2>
+          <p className="page-subtitle">
+            Configure the rules that keep agent recommendations aligned with your GTM motion.
+          </p>
         </div>
       </header>
       <div className="card">
@@ -17,4 +20,3 @@ export default function Settings() {
     </section>
   );
 }
-

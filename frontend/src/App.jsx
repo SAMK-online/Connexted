@@ -8,9 +8,12 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div>
-          <p className="eyebrow">CONNEXTed</p>
-          <h1>GTM Agent Desk</h1>
+        <div className="brand-panel">
+          <div className="brand-mark">C</div>
+          <div>
+            <p className="eyebrow">CONNEXTed</p>
+            <h1>GTM Agent Desk</h1>
+          </div>
         </div>
         <nav>
           <NavLink to="/">Captures</NavLink>
@@ -19,6 +22,11 @@ export default function App() {
         </nav>
       </aside>
       <main className="content">
+        <div className="topbar">
+          <span>WhatsApp-first GTM intelligence</span>
+          <span className="topbar-dot" />
+          <span>Human-reviewed outreach</span>
+        </div>
         <Routes>
           <Route path="/" element={<Captures />} />
           <Route path="/events" element={<EventRadar />} />

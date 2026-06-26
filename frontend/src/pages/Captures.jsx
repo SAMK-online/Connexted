@@ -27,10 +27,13 @@ export default function Captures() {
 
   return (
     <section className="stack">
-      <header className="page-header">
+      <header className="page-header hero-card">
         <div>
           <p className="eyebrow">Review Queue</p>
           <h2>Lead captures</h2>
+          <p className="page-subtitle">
+            Convert WhatsApp notes and business cards into reviewed GTM follow-up.
+          </p>
         </div>
         <span className="badge">Action-priority sorting</span>
       </header>
@@ -58,6 +61,10 @@ export default function Captures() {
       </form>
 
       <div className="grid">
+        {captures.isLoading ? <div className="card muted-card">Loading captures...</div> : null}
+        {!captures.isLoading && !(captures.data || []).length ? (
+          <div className="card muted-card">No captures yet. Create a test capture to preview the workflow.</div>
+        ) : null}
         {(captures.data || []).map((capture) => (
           <Link className="card capture-card" to={`/captures/${capture.id}`} key={capture.id}>
             <div>
@@ -74,4 +81,3 @@ export default function Captures() {
     </section>
   );
 }
-

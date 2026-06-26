@@ -28,10 +28,13 @@ export default function EventRadar() {
 
   return (
     <section className="stack">
-      <header className="page-header">
+      <header className="page-header hero-card">
         <div>
           <p className="eyebrow">Prospecting</p>
           <h2>Event Radar</h2>
+          <p className="page-subtitle">
+            Find relevant events and public prospects before your team arrives.
+          </p>
         </div>
         <span className="badge">2–3 public prospects per event</span>
       </header>
@@ -79,6 +82,10 @@ export default function EventRadar() {
       ))}
 
       <div className="stack">
+        {events.isLoading ? <div className="card muted-card">Loading event recommendations...</div> : null}
+        {!events.isLoading && !(events.data || []).length ? (
+          <div className="card muted-card">No event recommendations yet. Run a discovery search to start.</div>
+        ) : null}
         {(events.data || []).map((event) => (
           <article className="card stack" key={event.id}>
             <div className="page-header">

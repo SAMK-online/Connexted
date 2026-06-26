@@ -25,10 +25,13 @@ export default function Report() {
 
   return (
     <section className="stack">
-      <header className="page-header">
+      <header className="page-header hero-card">
         <div>
           <p className="eyebrow">Review-ready report</p>
           <h2>{data.contact.name || "Unknown contact"} · {data.company.name || "Unknown company"}</h2>
+          <p className="page-subtitle">
+            Evidence, signal context, strategy, drafts, and CRM controls in one review surface.
+          </p>
         </div>
         <span className={`badge ${data.confidence}`}>{data.confidence} confidence</span>
       </header>
@@ -111,4 +114,3 @@ export default function Report() {
     </section>
   );
 }
-
