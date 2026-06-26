@@ -214,6 +214,32 @@ textarea {
   gap: 0.75rem;
 }
 
+.pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pill {
+  background: #f0f5f2;
+  border: 1px solid #dfe8e2;
+  border-radius: 999px;
+  color: #315846;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.attendee-card {
+  background: #f9fbfa;
+  border: 1px solid #e1e7e2;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.compact pre {
+  margin-bottom: 0;
+}
+
 @media (max-width: 900px) {
   .app-shell,
   .two-column,
@@ -229,4 +255,3 @@ textarea {
     grid-column: auto;
   }
 }
-

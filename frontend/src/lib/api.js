@@ -64,3 +64,13 @@ export function syncHubSpot(payload) {
   });
 }
 
+export function discoverEvents(payload) {
+  return request("/api/events/discover", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function listEvents() {
+  return request("/api/events");
+}

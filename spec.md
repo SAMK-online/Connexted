@@ -2,7 +2,7 @@
 
 ## 1. Product Summary
 
-Build a production v1 monorepo for a WhatsApp-first GTM workflow platform used by sales and partnership teams. Reps submit a business card image plus optional prospect name, company, and conversation notes through WhatsApp. The backend stores the capture, runs a multi-agent workflow, enriches the person/company, identifies GTM signals, generates pitch strategy and outreach drafts, and routes all outbound actions through human review.
+Build a production v1 monorepo for a WhatsApp-first GTM workflow platform used by sales and partnership teams. Reps submit a business card image plus optional prospect name, company, and conversation notes through WhatsApp. The backend stores the capture, runs a multi-agent workflow, enriches the person/company, identifies GTM signals, generates pitch strategy and outreach drafts, and routes all outbound actions through human review. The platform also includes Event Radar for finding industry-relevant events and 2–3 public, high-potential people per event before reps attend or reach out.
 
 The system prioritizes useful partial outputs over blocking on perfect enrichment. When public or internal research is incomplete, the workflow should still produce a conservative review-ready report with missing-data warnings, confidence labels, and clearly marked inferred claims.
 
@@ -16,6 +16,7 @@ The system prioritizes useful partial outputs over blocking on perfect enrichmen
 - **WhatsApp intake:** Twilio WhatsApp webhook for v1.
 - **OCR:** Google Vision `DOCUMENT_TEXT_DETECTION` first; Tesseract fallback for local development or provider failure.
 - **Research/enrichment:** Tavily/public web search, source extraction, internal Supabase memory search, and provider interfaces for future paid APIs.
+- **Event discovery:** Tavily/public web research over event websites, agendas, speaker pages, sponsor pages, exhibitor lists, organizer pages, and publicly listed attendee pages.
 - **CRM/export:** HubSpot sync plus CSV export fallback.
 - **Infrastructure:** Docker Compose for local development; Dockerized backend/worker deployable to cloud hosts; managed Supabase.
 
@@ -32,6 +33,16 @@ The system prioritizes useful partial outputs over blocking on perfect enrichmen
 9. The workflow produces a review-ready report even if some enrichment failed, as long as minimum contact and strategy data exist.
 10. The original rep reviews each action independently in the web app.
 11. Approved actions can be copied, exported, or synced to HubSpot. The system does not automatically send email or LinkedIn outreach.
+
+## 3.1 Event Radar Workflow
+
+1. A rep enters industry, region, date range, target personas, verticals, and optional keywords.
+2. The event discovery agent finds relevant conferences, roundtables, webinars, meetups, trade shows, and partner events.
+3. The event qualification agent scores each event against ICP, playbooks, source quality, timing, region, and persona fit.
+4. The attendee discovery agent finds 2–3 public prospects per event, prioritizing speakers, sponsors, exhibitors, organizers, panelists, and explicitly public attendee lists.
+5. The prospect ranking agent explains why each person is relevant and labels any inferred role/context.
+6. The outreach agent generates pre-event email draft angles for human review.
+7. Reps can save recommended events/prospects and later convert a person into the normal capture/contact workflow.
 
 ## 4. Agent Workflow Requirements
 
@@ -52,6 +63,8 @@ Required nodes:
 - **Review interrupt:** Pause before any export/sync action and wait for human review.
 - **Feedback regeneration:** On rep feedback, rerun strategy and draft nodes by default while keeping extracted/enriched facts stable unless facts are explicitly challenged.
 - **CRM/export:** After approval, create/update HubSpot records or generate CSV export.
+- **Event discovery:** Find relevant industry events, store event sources, and recommend 2–3 public prospects per event.
+- **Event outreach:** Generate pre-event outreach drafts using only event evidence and labeled inferences.
 
 ### 4.2 Agent Output Policy
 
@@ -61,6 +74,7 @@ Required nodes:
 - Inferred claims must remain visible in the report review UI and must not be silently presented as verified facts.
 - Drafts can use inferred personalization only if the reviewer approves that specific draft/action.
 - Every signal must include source evidence, recency, relevance, and confidence.
+- Event recommendations must identify whether a person is a speaker, sponsor, exhibitor, organizer, panelist, or public attendee; do not imply private attendance.
 - Agent traces must expose structured inputs, outputs, tool calls, errors, source links, confidence, and concise rationale. Do not expose raw hidden chain-of-thought.
 
 ### 4.3 Failure And Retry Policy
@@ -138,6 +152,15 @@ Conflict policy:
 - `memory_chunks`: chunked playbooks, approved outcomes, examples, account notes.
 - `memory_embeddings`: vector rows for `pgvector` similarity search.
 
+### 6.5 Event Radar Tables
+
+- `event_discoveries`: rep query, industry, region, date range, personas, verticals, keywords, warnings, status.
+- `events`: recommended event, type, location, dates, website, fit reasons, confidence, save status.
+- `event_sources`: event website, agenda, speaker, sponsor, exhibitor, organizer, and public attendee evidence.
+- `event_attendees`: 2–3 public prospects per event, attendee role, company/title, relevance reason, suggested angle, confidence.
+- `event_recommendations`: ranked event recommendations for a rep/team.
+- `event_outreach_drafts`: pre-event email/LinkedIn drafts that remain review-gated before use.
+
 Memory policy:
 
 - Approved edits and approved drafts automatically become reusable organization memory.
@@ -153,6 +176,7 @@ Allowed v1 source classes:
 - Public news, funding announcements, SEC/regulatory filings where relevant.
 - Public business directories and company databases.
 - Public personal social/profile pages when relevant to business context.
+- Event websites, agendas, speaker pages, sponsor pages, exhibitor lists, organizer pages, and explicitly public attendee lists.
 - Internal Supabase memory, playbooks, account notes, and approved examples.
 
 Source handling:
@@ -161,6 +185,7 @@ Source handling:
 - Label personal-social facts distinctly so reviewers can judge whether to use them.
 - Provide source filtering hooks so organizations can later restrict to approved domains.
 - Do not rely on unsourced LLM memory for factual claims.
+- Do not infer private attendance from social media or event marketing pages; label people by public role only.
 
 ## 8. GTM Strategy Rules
 
@@ -239,6 +264,7 @@ Rules:
 - Enriched report.
 - Agent trace.
 - Draft review/editor.
+- Event Radar.
 - Feedback/regeneration panel.
 - Merge suggestion review.
 - CRM sync status.
@@ -299,6 +325,14 @@ Every regeneration should create a new draft version and preserve prior versions
 - Show missing-data warnings clearly.
 - Show inferred-claim badges inline.
 - Avoid raw numeric scores in the primary UI unless used internally.
+
+### 10.6 Event Radar Screen
+
+- Provide inputs for industry, region, date range, personas, verticals, keywords, and max events.
+- Show recommended events with fit reasons, confidence, warnings, and source evidence.
+- Show 2–3 recommended public people per event with role, company/title, relevance reason, and suggested angle.
+- Label speaker/sponsor/exhibitor/organizer/public-attendee roles explicitly.
+- Show generated pre-event drafts as reviewable suggestions, not automatically sent outreach.
 
 ## 11. CRM And Export
 
@@ -381,6 +415,12 @@ Conflict behavior:
 - `GET/PATCH /organization/settings`
 - `GET/POST/PATCH /integrations`
 
+### 13.6 Event Radar APIs
+
+- `POST /events/discover`: discover and rank relevant events and public prospects.
+- `GET /events`: list saved or discovered events.
+- `GET /events/:event_id`: fetch event details, sources, attendees, and pre-event drafts.
+
 ## 14. Realtime And Observability
 
 - Use Supabase Realtime for capture status, agent run status, review state, and CRM sync updates.
@@ -402,6 +442,7 @@ Conflict behavior:
 - Draft schema validation and inferred-claim labeling.
 - Review gating for drafts, export, CRM sync, and merge approval.
 - HubSpot payload mapping and field-level diff generation.
+- Event discovery request validation, event ranking, attendee role labeling, and pre-event draft generation.
 
 ### 15.2 Workflow Tests
 
@@ -412,6 +453,7 @@ Conflict behavior:
 - Feedback regeneration reruns strategy/drafts only.
 - Approved edits become memory; rejected drafts do not.
 - Human review interrupt/resume works reliably.
+- Event Radar returns relevant events with 2–3 public prospects per event and labeled source constraints.
 
 ### 15.3 Database Tests
 
@@ -421,6 +463,7 @@ Conflict behavior:
 - Soft delete and purge eligibility.
 - Vector memory insert and similarity search RPCs.
 - Audit lineage for sources, edits, approvals, exports, and syncs.
+- RLS tenant isolation for event discoveries, events, attendees, sources, recommendations, and event outreach drafts.
 
 ### 15.4 Frontend Tests
 
@@ -433,6 +476,7 @@ Conflict behavior:
 - Merge suggestion review.
 - HubSpot diff review and sync status.
 - Agent trace with concise rationale.
+- Event Radar discovery form, event cards, attendee cards, confidence labels, warnings, and pre-event drafts.
 
 ## 16. Acceptance Criteria
 
@@ -445,6 +489,7 @@ Conflict behavior:
 - Field conflicts are shown before overwriting existing contact/company/CRM values.
 - Agent traces show structured steps, tool calls, confidence, errors, sources, and concise rationale.
 - Approved edits and drafts become tagged organization memory for future recommendations.
+- A rep can discover industry-relevant events and see 2–3 publicly sourced prospects per event with relevance reasons and pre-event draft suggestions.
 - RLS prevents cross-organization access.
 
 ## 17. Defaults And Assumptions
@@ -466,3 +511,4 @@ Conflict behavior:
 - Draft UX uses rich editing plus controlled AI commands.
 - Confidence is displayed with badges and reasons, not primary numeric scores.
 - CRM v1 tracks sync status and external links only; downstream lifecycle remains in HubSpot.
+- Event Radar v1 uses public role evidence and does not claim private attendance unless an attendee list is explicitly public.

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from uuid import uuid4
 
@@ -16,6 +16,7 @@ def utc_now() -> datetime:
 class CaptureSource(StrEnum):
     WHATSAPP = "whatsapp"
     WEB = "web"
+    EVENT_RADAR = "event_radar"
 
 
 class CaptureStatus(StrEnum):
@@ -234,3 +235,80 @@ class StyleProfile(BaseModel):
     banned_phrases: list[str]
     cta_style: str
 
+
+class EventDiscoveryRequest(BaseModel):
+    organization_id: str = "demo-org"
+    rep_id: str = "demo-rep"
+    industry: str
+    region: str | None = None
+    date_start: date | None = None
+    date_end: date | None = None
+    personas: list[str] = Field(default_factory=list)
+    verticals: list[str] = Field(default_factory=list)
+    keywords: list[str] = Field(default_factory=list)
+    max_events: int = Field(default=5, ge=1, le=10)
+
+
+class EventSource(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("evsrc"))
+    source_type: str
+    title: str
+    url: str | None = None
+    snippet: str
+    retrieved_at: datetime = Field(default_factory=utc_now)
+    confidence: ConfidenceLabel = ConfidenceLabel.MEDIUM
+
+
+class EventAttendee(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("att"))
+    event_id: str
+    name: str
+    title: str | None = None
+    company: str | None = None
+    attendee_role: str
+    relevance_reason: str
+    suggested_angle: str
+    confidence: ConfidenceLabel = ConfidenceLabel.MEDIUM
+    source_ids: list[str] = Field(default_factory=list)
+    inferred: bool = False
+
+
+class EventOutreachDraft(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("evdraft"))
+    event_id: str
+    attendee_id: str
+    channel: DraftChannel
+    subject: str | None = None
+    body: str
+    inferred_claims_used: bool = False
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class IndustryEventRead(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("evt"))
+    organization_id: str
+    discovery_request_id: str
+    name: str
+    event_type: str
+    location: str | None = None
+    starts_on: date | None = None
+    ends_on: date | None = None
+    website_url: str | None = None
+    relevance_summary: str
+    fit_reasons: list[str] = Field(default_factory=list)
+    confidence: ConfidenceLabel = ConfidenceLabel.MEDIUM
+    sources: list[EventSource] = Field(default_factory=list)
+    attendees: list[EventAttendee] = Field(default_factory=list)
+    drafts: list[EventOutreachDraft] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class EventDiscoveryRead(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("evdisc"))
+    organization_id: str
+    rep_id: str
+    request: EventDiscoveryRequest
+    status: str = "completed"
+    events: list[IndustryEventRead] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)

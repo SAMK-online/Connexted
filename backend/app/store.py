@@ -10,6 +10,8 @@ from app.schemas import (
     CrmSyncRequest,
     CrmSyncResult,
     DraftRegenerateRequest,
+    EventDiscoveryRead,
+    IndustryEventRead,
     OutreachDraftRead,
     OutreachDraftUpdate,
     ReportRead,
@@ -34,6 +36,8 @@ class InMemoryStore:
         self.drafts: dict[str, OutreachDraftRead] = {}
         self.reviews: dict[str, list[ReviewDecisionRead]] = defaultdict(list)
         self.crm_results: dict[str, CrmSyncResult] = {}
+        self.event_discoveries: dict[str, EventDiscoveryRead] = {}
+        self.events: dict[str, IndustryEventRead] = {}
 
     def create_capture(self, payload: CaptureCreate) -> CaptureRead:
         dedupe_key = self._capture_dedupe_key(payload)
@@ -160,6 +164,18 @@ class InMemoryStore:
     def get_crm_sync(self, job_id: str) -> CrmSyncResult | None:
         return self.crm_results.get(job_id)
 
+    def save_event_discovery(self, discovery: EventDiscoveryRead) -> EventDiscoveryRead:
+        self.event_discoveries[discovery.id] = discovery
+        for event in discovery.events:
+            self.events[event.id] = event
+        return discovery
+
+    def list_events(self) -> list[IndustryEventRead]:
+        return sorted(self.events.values(), key=lambda item: item.created_at, reverse=True)
+
+    def get_event(self, event_id: str) -> IndustryEventRead | None:
+        return self.events.get(event_id)
+
     def _replace_report_draft(self, updated: OutreachDraftRead) -> None:
         for report_id, report in self.reports.items():
             if report.id == updated.report_id:
@@ -182,4 +198,3 @@ class InMemoryStore:
             ]
         )
         return sha256(seed.encode("utf-8")).hexdigest()
-
