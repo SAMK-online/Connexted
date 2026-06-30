@@ -5,7 +5,6 @@ from app.providers.research import enrich_company
 from app.schemas import (
     AgentRunRead,
     AgentStep,
-    CaptureStatus,
     ConfidenceLabel,
     DraftChannel,
     DraftRegenerateRequest,
@@ -15,17 +14,17 @@ from app.schemas import (
     ReportRead,
     Signal,
 )
-from app.store import InMemoryStore
+from app.store import AppStore
 
 
-async def run_capture_workflow(store: InMemoryStore, capture_id: str) -> None:
-    capture = store.get_capture(capture_id)
+async def run_capture_workflow(store: AppStore, capture_id: str) -> None:
+    capture = await store.get_capture(capture_id)
     if not capture:
         return
 
-    store.mark_capture_running(capture_id)
+    await store.mark_capture_running(capture_id)
     run = AgentRunRead(capture_id=capture_id)
-    store.save_agent_run(run)
+    run = await store.save_agent_run(run)
 
     try:
         contact = await _run_step(run, "ocr_contact_extraction", extract_contact(capture))
@@ -66,9 +65,9 @@ async def run_capture_workflow(store: InMemoryStore, capture_id: str) -> None:
         )
         run.status = "review_ready"
         run.updated_at = datetime.now(UTC)
-        store.save_agent_run(run)
-        store.save_report(report)
-        store.mark_capture_review_ready(capture_id, report.warnings)
+        await store.save_agent_run(run)
+        await store.save_report(report)
+        await store.mark_capture_review_ready(capture_id, report.warnings)
     except Exception as exc:
         run.status = "failed"
         run.steps.append(
@@ -79,22 +78,14 @@ async def run_capture_workflow(store: InMemoryStore, capture_id: str) -> None:
                 finished_at=datetime.now(UTC),
             )
         )
-        store.save_agent_run(run)
-        capture = store.get_capture(capture_id)
-        if capture:
-            store.captures[capture_id] = capture.model_copy(
-                update={
-                    "status": CaptureStatus.FAILED,
-                    "warnings": [str(exc)],
-                    "updated_at": datetime.now(UTC),
-                }
-            )
+        await store.save_agent_run(run)
+        await store.mark_capture_failed(capture_id, [str(exc)])
 
 
-def regenerate_draft(
-    store: InMemoryStore, draft_id: str, payload: DraftRegenerateRequest
+async def regenerate_draft(
+    store: AppStore, draft_id: str, payload: DraftRegenerateRequest
 ) -> OutreachDraftRead | None:
-    return store.regenerate_draft(draft_id, payload)
+    return await store.regenerate_draft(draft_id, payload)
 
 
 async def _run_step(run: AgentRunRead, name: str, awaitable):
@@ -247,4 +238,3 @@ def _warnings(contact_name: str | None, company_name: str | None) -> list[str]:
         warnings.append("Company enrichment is incomplete.")
     warnings.append("Public enrichment is running in local/mock mode until provider keys are configured.")
     return warnings
-

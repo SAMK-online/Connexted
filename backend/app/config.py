@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     api_base_url: str = "http://localhost:8000"
     frontend_origin: str = "http://localhost:5173"
     mock_providers: bool = True
+    persistence_backend: str = "memory"
 
     supabase_url: str | None = None
     supabase_anon_key: str | None = None
@@ -41,4 +42,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

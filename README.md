@@ -79,11 +79,34 @@ CONNEXTed is built around assisted GTM execution, not blind automation.
 
 This repository currently contains the initial production-shaped scaffold for the CONNEXTed product:
 
-- FastAPI backend foundation.
+- FastAPI backend with async persistence boundary.
+- In-memory local development store.
+- Postgres/Supabase-backed store selected with `PERSISTENCE_BACKEND=postgres`.
 - LangGraph-oriented workflow structure.
 - React dashboard foundation.
 - Supabase schema and RLS migration.
 - HubSpot/CSV sync interface stubs.
 - Product specification in `spec.md`.
 
-The next product milestone is replacing local mock persistence and provider stubs with real Supabase, OCR, research, LLM, and CRM integrations.
+The next product milestone is replacing provider stubs with real Supabase Auth/Storage,
+OCR, research, LLM, and CRM integrations.
+
+## Backend Development
+
+The backend defaults to local in-memory persistence:
+
+```bash
+cd backend
+uvicorn app.main:app --reload
+```
+
+To run against Supabase/Postgres, set:
+
+```bash
+PERSISTENCE_BACKEND=postgres
+DATABASE_URL=postgresql+asyncpg://...
+```
+
+The database schema lives in `supabase/migrations`. The API still supports mock providers
+while using Postgres persistence, so capture/report/review/Event Radar flows can be tested
+before OCR, research, LLM, and HubSpot providers are connected.

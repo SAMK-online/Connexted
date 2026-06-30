@@ -4,7 +4,7 @@ from app.api.dependencies import get_request_settings, get_store
 from app.config import Settings
 from app.providers.twilio import validate_twilio_signature
 from app.schemas import CaptureCreate, CaptureSource
-from app.store import InMemoryStore
+from app.store import AppStore
 from app.workflow.runner import run_capture_workflow
 
 router = APIRouter()
@@ -20,7 +20,7 @@ async def twilio_whatsapp_webhook(
     NumMedia: int = Form(default=0),
     MediaUrl0: str | None = Form(default=None),
     MediaContentType0: str | None = Form(default=None),
-    store: InMemoryStore = Depends(get_store),
+    store: AppStore = Depends(get_store),
     settings: Settings = Depends(get_request_settings),
 ) -> dict[str, str]:
     form = await request.form()
@@ -36,7 +36,7 @@ async def twilio_whatsapp_webhook(
 
     media_urls = [MediaUrl0] if NumMedia and MediaUrl0 else []
     content_types = [MediaContentType0] if NumMedia and MediaContentType0 else []
-    capture = store.create_capture(
+    capture = await store.create_capture(
         CaptureCreate(
             organization_id="demo-org",
             rep_id=From or "demo-rep",
@@ -53,4 +53,3 @@ async def twilio_whatsapp_webhook(
 
     background_tasks.add_task(run_capture_workflow, store, capture.id)
     return {"status": "queued", "capture_id": capture.id}
-

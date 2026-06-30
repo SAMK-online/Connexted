@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import get_store
 from app.schemas import DraftRegenerateRequest, OutreachDraftRead, OutreachDraftUpdate
-from app.store import InMemoryStore
+from app.store import AppStore
 from app.workflow.runner import regenerate_draft
 
 router = APIRouter()
@@ -12,9 +12,9 @@ router = APIRouter()
 async def update_draft(
     draft_id: str,
     payload: OutreachDraftUpdate,
-    store: InMemoryStore = Depends(get_store),
+    store: AppStore = Depends(get_store),
 ) -> OutreachDraftRead:
-    draft = store.update_draft(draft_id, payload)
+    draft = await store.update_draft(draft_id, payload)
     if not draft:
         raise HTTPException(status_code=404, detail="Draft not found")
     return draft
@@ -24,10 +24,9 @@ async def update_draft(
 async def regenerate(
     draft_id: str,
     payload: DraftRegenerateRequest,
-    store: InMemoryStore = Depends(get_store),
+    store: AppStore = Depends(get_store),
 ) -> OutreachDraftRead:
-    draft = regenerate_draft(store, draft_id, payload)
+    draft = await regenerate_draft(store, draft_id, payload)
     if not draft:
         raise HTTPException(status_code=404, detail="Draft not found")
     return draft
-

@@ -1,0 +1,5 @@
+drop index if exists public.event_attendees_event_attendees_event_id_fkey_idx;
+drop index if exists public.event_outreach_drafts_event_outreach_drafts_event_id_fkey_idx;
+drop index if exists public.outreach_drafts_outreach_drafts_capture_id_fkey_idx;
+drop index if exists public.reports_reports_capture_id_fkey_idx;
+drop index if exists public.signals_signals_capture_id_fkey_idx;

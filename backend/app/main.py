@@ -1,16 +1,24 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import admin, captures, crm, drafts, events, reports, reviews, webhooks
 from app.config import get_settings
-from app.store import InMemoryStore
+from app.store import create_store
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="CONNEXTed API", version="0.1.0")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        yield
+        await app.state.store.close()
+
+    app = FastAPI(title="CONNEXTed API", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
-    app.state.store = InMemoryStore()
+    app.state.store = create_store(settings)
 
     app.add_middleware(
         CORSMiddleware,
