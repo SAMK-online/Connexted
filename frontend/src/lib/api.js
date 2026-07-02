@@ -74,3 +74,25 @@ export function discoverEvents(payload) {
 export function listEvents() {
   return request("/api/events");
 }
+
+export function listPlaybooks() {
+  return request("/api/admin/playbooks");
+}
+
+export function updatePlaybook(playbookId, payload) {
+  return request(`/api/admin/playbooks/${playbookId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function listStyleProfiles() {
+  return request("/api/admin/style-profiles");
+}
+
+export function updateStyleProfile(profileId, payload) {
+  return request(`/api/admin/style-profiles/${profileId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}

@@ -123,3 +123,43 @@ def test_event_discovery_persists_recommendations(monkeypatch):
         events = client.get("/api/events")
         assert events.status_code == 200
         assert len(events.json()) == 2
+
+
+def test_admin_settings_update_playbook_and_style_profile(monkeypatch):
+    with make_client(monkeypatch) as client:
+        playbooks = client.get("/api/admin/playbooks")
+        assert playbooks.status_code == 200
+        playbook_id = playbooks.json()[0]["id"]
+
+        updated_playbook = client.put(
+            f"/api/admin/playbooks/{playbook_id}",
+            json={
+                "name": "Enterprise events",
+                "icp_segments": ["B2B SaaS", "enterprise partnerships"],
+                "disqualifiers": ["students"],
+                "value_props": ["Turn booth scans into reviewed follow-up"],
+            },
+        )
+        assert updated_playbook.status_code == 200
+        assert updated_playbook.json()["name"] == "Enterprise events"
+        assert updated_playbook.json()["icp_segments"] == [
+            "B2B SaaS",
+            "enterprise partnerships",
+        ]
+
+        profiles = client.get("/api/admin/style-profiles")
+        assert profiles.status_code == 200
+        profile_id = profiles.json()[0]["id"]
+
+        updated_profile = client.put(
+            f"/api/admin/style-profiles/{profile_id}",
+            json={
+                "name": "Operator brief",
+                "tone": "plainspoken and specific",
+                "banned_phrases": ["circling back"],
+                "cta_style": "one clear meeting ask",
+            },
+        )
+        assert updated_profile.status_code == 200
+        assert updated_profile.json()["tone"] == "plainspoken and specific"
+        assert updated_profile.json()["banned_phrases"] == ["circling back"]

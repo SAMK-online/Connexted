@@ -28,13 +28,32 @@ from app.schemas import (
     IndustryEventRead,
     OutreachDraftRead,
     OutreachDraftUpdate,
+    Playbook,
+    PlaybookUpsert,
     ReportRead,
     ReviewAction,
     ReviewDecisionCreate,
     ReviewDecisionRead,
     Signal,
     SourceEvidence,
+    StyleProfile,
+    StyleProfileUpsert,
 )
+
+
+DEFAULT_PLAYBOOK_DATA = {
+    "name": "Default GTM Playbook",
+    "icp_segments": ["B2B software", "partnership-led growth"],
+    "disqualifiers": ["student project", "non-business use"],
+    "value_props": ["Increase speed from event conversation to reviewed outreach"],
+}
+
+DEFAULT_STYLE_PROFILE_DATA = {
+    "name": "Default concise executive",
+    "tone": "direct, useful, low-hype",
+    "banned_phrases": ["just checking in", "hope you're doing well"],
+    "cta_style": "specific next step",
+}
 
 
 class AppStore(Protocol):
@@ -84,6 +103,18 @@ class AppStore(Protocol):
 
     async def get_event(self, event_id: str) -> IndustryEventRead | None: ...
 
+    async def list_playbooks(self) -> list[Playbook]: ...
+
+    async def update_playbook(
+        self, playbook_id: str, payload: PlaybookUpsert
+    ) -> Playbook | None: ...
+
+    async def list_style_profiles(self) -> list[StyleProfile]: ...
+
+    async def update_style_profile(
+        self, profile_id: str, payload: StyleProfileUpsert
+    ) -> StyleProfile | None: ...
+
 
 def create_store(settings: Settings) -> AppStore:
     if settings.persistence_backend == "postgres":
@@ -110,6 +141,12 @@ class InMemoryStore:
         self.crm_results: dict[str, CrmSyncResult] = {}
         self.event_discoveries: dict[str, EventDiscoveryRead] = {}
         self.events: dict[str, IndustryEventRead] = {}
+        self.playbooks: dict[str, Playbook] = {
+            "default-playbook": Playbook(id="default-playbook", **DEFAULT_PLAYBOOK_DATA)
+        }
+        self.style_profiles: dict[str, StyleProfile] = {
+            "default-style": StyleProfile(id="default-style", **DEFAULT_STYLE_PROFILE_DATA)
+        }
 
     async def close(self) -> None:
         return None
@@ -262,6 +299,30 @@ class InMemoryStore:
 
     async def get_event(self, event_id: str) -> IndustryEventRead | None:
         return self.events.get(event_id)
+
+    async def list_playbooks(self) -> list[Playbook]:
+        return list(self.playbooks.values())
+
+    async def update_playbook(
+        self, playbook_id: str, payload: PlaybookUpsert
+    ) -> Playbook | None:
+        if playbook_id not in self.playbooks:
+            return None
+        playbook = Playbook(id=playbook_id, **payload.model_dump())
+        self.playbooks[playbook_id] = playbook
+        return playbook
+
+    async def list_style_profiles(self) -> list[StyleProfile]:
+        return list(self.style_profiles.values())
+
+    async def update_style_profile(
+        self, profile_id: str, payload: StyleProfileUpsert
+    ) -> StyleProfile | None:
+        if profile_id not in self.style_profiles:
+            return None
+        profile = StyleProfile(id=profile_id, **payload.model_dump())
+        self.style_profiles[profile_id] = profile
+        return profile
 
     def _replace_report_draft(self, updated: OutreachDraftRead) -> None:
         for report_id, report in self.reports.items():
@@ -1236,6 +1297,172 @@ class PostgresStore:
                 return None
             return await self._event_from_row(conn, row)
 
+    async def list_playbooks(self) -> list[Playbook]:
+        async with self.engine.begin() as conn:
+            organization_id = await self._resolve_organization_id(conn, "demo-org")
+            rows = (
+                await conn.execute(
+                    text(
+                        """
+                        select *
+                        from public.playbooks
+                        where organization_id = :organization_id
+                        order by is_default desc, created_at asc
+                        """
+                    ),
+                    {"organization_id": organization_id},
+                )
+            ).mappings().all()
+            if not rows:
+                row = (
+                    await conn.execute(
+                        text(
+                            """
+                            insert into public.playbooks (
+                              organization_id,
+                              name,
+                              icp_segments,
+                              disqualifiers,
+                              value_props,
+                              is_default
+                            )
+                            values (
+                              :organization_id,
+                              :name,
+                              cast(:icp_segments as jsonb),
+                              cast(:disqualifiers as jsonb),
+                              cast(:value_props as jsonb),
+                              true
+                            )
+                            returning *
+                            """
+                        ),
+                        {
+                            "organization_id": organization_id,
+                            "name": DEFAULT_PLAYBOOK_DATA["name"],
+                            "icp_segments": _json(DEFAULT_PLAYBOOK_DATA["icp_segments"]),
+                            "disqualifiers": _json(DEFAULT_PLAYBOOK_DATA["disqualifiers"]),
+                            "value_props": _json(DEFAULT_PLAYBOOK_DATA["value_props"]),
+                        },
+                    )
+                ).mappings().one()
+                rows = [row]
+            return [_playbook_from_row(row) for row in rows]
+
+    async def update_playbook(
+        self, playbook_id: str, payload: PlaybookUpsert
+    ) -> Playbook | None:
+        if not _is_uuid(playbook_id):
+            return None
+        async with self.engine.begin() as conn:
+            row = (
+                await conn.execute(
+                    text(
+                        """
+                        update public.playbooks
+                        set name = :name,
+                            icp_segments = cast(:icp_segments as jsonb),
+                            disqualifiers = cast(:disqualifiers as jsonb),
+                            value_props = cast(:value_props as jsonb),
+                            updated_at = now()
+                        where id = :playbook_id
+                        returning *
+                        """
+                    ),
+                    {
+                        "playbook_id": playbook_id,
+                        "name": payload.name,
+                        "icp_segments": _json(payload.icp_segments),
+                        "disqualifiers": _json(payload.disqualifiers),
+                        "value_props": _json(payload.value_props),
+                    },
+                )
+            ).mappings().first()
+            return _playbook_from_row(row) if row else None
+
+    async def list_style_profiles(self) -> list[StyleProfile]:
+        async with self.engine.begin() as conn:
+            organization_id = await self._resolve_organization_id(conn, "demo-org")
+            rows = (
+                await conn.execute(
+                    text(
+                        """
+                        select *
+                        from public.style_profiles
+                        where organization_id = :organization_id
+                        order by is_default desc, created_at asc
+                        """
+                    ),
+                    {"organization_id": organization_id},
+                )
+            ).mappings().all()
+            if not rows:
+                row = (
+                    await conn.execute(
+                        text(
+                            """
+                            insert into public.style_profiles (
+                              organization_id,
+                              name,
+                              tone,
+                              banned_phrases,
+                              cta_style,
+                              is_default
+                            )
+                            values (
+                              :organization_id,
+                              :name,
+                              :tone,
+                              cast(:banned_phrases as jsonb),
+                              :cta_style,
+                              true
+                            )
+                            returning *
+                            """
+                        ),
+                        {
+                            "organization_id": organization_id,
+                            "name": DEFAULT_STYLE_PROFILE_DATA["name"],
+                            "tone": DEFAULT_STYLE_PROFILE_DATA["tone"],
+                            "banned_phrases": _json(DEFAULT_STYLE_PROFILE_DATA["banned_phrases"]),
+                            "cta_style": DEFAULT_STYLE_PROFILE_DATA["cta_style"],
+                        },
+                    )
+                ).mappings().one()
+                rows = [row]
+            return [_style_profile_from_row(row) for row in rows]
+
+    async def update_style_profile(
+        self, profile_id: str, payload: StyleProfileUpsert
+    ) -> StyleProfile | None:
+        if not _is_uuid(profile_id):
+            return None
+        async with self.engine.begin() as conn:
+            row = (
+                await conn.execute(
+                    text(
+                        """
+                        update public.style_profiles
+                        set name = :name,
+                            tone = :tone,
+                            banned_phrases = cast(:banned_phrases as jsonb),
+                            cta_style = :cta_style,
+                            updated_at = now()
+                        where id = :profile_id
+                        returning *
+                        """
+                    ),
+                    {
+                        "profile_id": profile_id,
+                        "name": payload.name,
+                        "tone": payload.tone,
+                        "banned_phrases": _json(payload.banned_phrases),
+                        "cta_style": payload.cta_style,
+                    },
+                )
+            ).mappings().first()
+            return _style_profile_from_row(row) if row else None
+
     async def _update_capture_status(
         self,
         capture_id: str,
@@ -1784,6 +2011,26 @@ def _crm_result_from_row(row, capture_id: str, status: str) -> CrmSyncResult:
         external_url=external_ids.get("external_url"),
         message=external_ids.get("message", "CRM sync completed."),
         created_at=row["created_at"],
+    )
+
+
+def _playbook_from_row(row) -> Playbook:
+    return Playbook(
+        id=str(row["id"]),
+        name=row["name"],
+        icp_segments=_parse_json(row["icp_segments"], []),
+        disqualifiers=_parse_json(row["disqualifiers"], []),
+        value_props=_parse_json(row["value_props"], []),
+    )
+
+
+def _style_profile_from_row(row) -> StyleProfile:
+    return StyleProfile(
+        id=str(row["id"]),
+        name=row["name"],
+        tone=row["tone"],
+        banned_phrases=_parse_json(row["banned_phrases"], []),
+        cta_style=row["cta_style"],
     )
 
 

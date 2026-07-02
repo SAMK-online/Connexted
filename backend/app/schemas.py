@@ -220,20 +220,26 @@ class CrmSyncResult(BaseModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
-class Playbook(BaseModel):
-    id: str
+class PlaybookUpsert(BaseModel):
     name: str
-    icp_segments: list[str]
-    disqualifiers: list[str]
-    value_props: list[str]
+    icp_segments: list[str] = Field(default_factory=list)
+    disqualifiers: list[str] = Field(default_factory=list)
+    value_props: list[str] = Field(default_factory=list)
 
 
-class StyleProfile(BaseModel):
+class Playbook(PlaybookUpsert):
     id: str
+
+
+class StyleProfileUpsert(BaseModel):
     name: str
     tone: str
-    banned_phrases: list[str]
+    banned_phrases: list[str] = Field(default_factory=list)
     cta_style: str
+
+
+class StyleProfile(StyleProfileUpsert):
+    id: str
 
 
 class EventDiscoveryRequest(BaseModel):
