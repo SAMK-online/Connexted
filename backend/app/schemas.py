@@ -225,6 +225,8 @@ class PlaybookUpsert(BaseModel):
     icp_segments: list[str] = Field(default_factory=list)
     disqualifiers: list[str] = Field(default_factory=list)
     value_props: list[str] = Field(default_factory=list)
+    research_resources: list[str] = Field(default_factory=list)
+    research_instructions: str = ""
 
 
 class Playbook(PlaybookUpsert):

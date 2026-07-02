@@ -46,6 +46,8 @@ DEFAULT_PLAYBOOK_DATA = {
     "icp_segments": ["B2B software", "partnership-led growth"],
     "disqualifiers": ["student project", "non-business use"],
     "value_props": ["Increase speed from event conversation to reviewed outreach"],
+    "research_resources": [],
+    "research_instructions": "",
 }
 
 DEFAULT_STYLE_PROFILE_DATA = {
@@ -1324,6 +1326,8 @@ class PostgresStore:
                               icp_segments,
                               disqualifiers,
                               value_props,
+                              research_resources,
+                              research_instructions,
                               is_default
                             )
                             values (
@@ -1332,6 +1336,8 @@ class PostgresStore:
                               cast(:icp_segments as jsonb),
                               cast(:disqualifiers as jsonb),
                               cast(:value_props as jsonb),
+                              cast(:research_resources as jsonb),
+                              :research_instructions,
                               true
                             )
                             returning *
@@ -1343,6 +1349,12 @@ class PostgresStore:
                             "icp_segments": _json(DEFAULT_PLAYBOOK_DATA["icp_segments"]),
                             "disqualifiers": _json(DEFAULT_PLAYBOOK_DATA["disqualifiers"]),
                             "value_props": _json(DEFAULT_PLAYBOOK_DATA["value_props"]),
+                            "research_resources": _json(
+                                DEFAULT_PLAYBOOK_DATA["research_resources"]
+                            ),
+                            "research_instructions": DEFAULT_PLAYBOOK_DATA[
+                                "research_instructions"
+                            ],
                         },
                     )
                 ).mappings().one()
@@ -1364,6 +1376,8 @@ class PostgresStore:
                             icp_segments = cast(:icp_segments as jsonb),
                             disqualifiers = cast(:disqualifiers as jsonb),
                             value_props = cast(:value_props as jsonb),
+                            research_resources = cast(:research_resources as jsonb),
+                            research_instructions = :research_instructions,
                             updated_at = now()
                         where id = :playbook_id
                         returning *
@@ -1375,6 +1389,8 @@ class PostgresStore:
                         "icp_segments": _json(payload.icp_segments),
                         "disqualifiers": _json(payload.disqualifiers),
                         "value_props": _json(payload.value_props),
+                        "research_resources": _json(payload.research_resources),
+                        "research_instructions": payload.research_instructions,
                     },
                 )
             ).mappings().first()
@@ -2021,6 +2037,8 @@ def _playbook_from_row(row) -> Playbook:
         icp_segments=_parse_json(row["icp_segments"], []),
         disqualifiers=_parse_json(row["disqualifiers"], []),
         value_props=_parse_json(row["value_props"], []),
+        research_resources=_parse_json(row["research_resources"], []),
+        research_instructions=row["research_instructions"] or "",
     )
 
 

@@ -27,6 +27,8 @@ async def run_capture_workflow(store: AppStore, capture_id: str) -> None:
     run = await store.save_agent_run(run)
 
     try:
+        playbooks = await store.list_playbooks()
+        playbook = playbooks[0] if playbooks else None
         contact = await _run_step(run, "ocr_contact_extraction", extract_contact(capture))
         company, sources = await _run_step(run, "company_enrichment", enrich_company(capture))
         signals = _detect_signals(capture, [source.id for source in sources])
@@ -37,12 +39,23 @@ async def run_capture_workflow(store: AppStore, capture_id: str) -> None:
                 "Signals are conservative because public research providers are not configured.",
             )
         )
-        strategy = _build_strategy(capture, company.name or "the account", signals)
+        if playbook:
+            run.steps.append(
+                _complete_step(
+                    "playbook_context",
+                    (
+                        "Loaded ICP, disqualifiers, value props, and "
+                        f"{len(playbook.research_resources)} configured research resource(s)."
+                    ),
+                    _playbook_rationale(playbook),
+                )
+            )
+        strategy = _build_strategy(capture, company.name or "the account", signals, playbook)
         run.steps.append(
             _complete_step(
                 "pitch_strategy",
                 "Generated recommended angle, value prop, CTA, and objections.",
-                "Strategy uses submitted notes, configurable playbook placeholders, and signal confidence.",
+                "Strategy uses submitted notes, saved playbook context, and signal confidence.",
             )
         )
         report = ReportRead(
@@ -157,20 +170,41 @@ def _detect_signals(capture, source_ids: list[str]) -> list[Signal]:
     return signals
 
 
-def _build_strategy(capture, company_name: str, signals: list[Signal]) -> PitchStrategy:
+def _build_strategy(capture, company_name: str, signals: list[Signal], playbook=None) -> PitchStrategy:
     primary_signal = signals[0].signal_type.replace("_", " ")
+    value_prop = (
+        playbook.value_props[0]
+        if playbook and playbook.value_props
+        else "Turn high-intent event interactions into reviewed, evidence-backed outreach quickly."
+    )
+    reasons = ["Uses submitted conversation context and conservative signal detection."]
+    if playbook:
+        reasons.append(f"Uses saved playbook: {playbook.name}.")
+        if playbook.research_resources:
+            reasons.append(
+                f"Agent should prioritize {len(playbook.research_resources)} configured resource(s)."
+            )
     return PitchStrategy(
         recommended_angle=f"Reference the recent conversation and connect it to {primary_signal}.",
         next_best_action="Send a concise personalized follow-up and create a HubSpot task after approval.",
         pain_hypothesis=(
             f"{company_name} may benefit from a faster path from event conversations to qualified follow-up."
         ),
-        value_prop="Turn high-intent event interactions into reviewed, evidence-backed outreach quickly.",
+        value_prop=value_prop,
         suggested_cta="Ask for a 20-minute follow-up to compare current GTM handoff workflow against the proposed approach.",
         objections=["Too much automation", "Unclear data accuracy", "Existing CRM workflow already works"],
         confidence=ConfidenceLabel.MEDIUM,
-        reasons=["Uses submitted conversation context and conservative signal detection."],
+        reasons=reasons,
     )
+
+
+def _playbook_rationale(playbook) -> str:
+    if playbook.research_resources:
+        first_resources = ", ".join(playbook.research_resources[:3])
+        return f"Configured agent research resources include: {first_resources}."
+    if playbook.research_instructions:
+        return f"Configured agent research instructions: {playbook.research_instructions}"
+    return "No agent research resources configured yet."
 
 
 def _build_drafts(report: ReportRead) -> list[OutreachDraftRead]:

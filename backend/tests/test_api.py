@@ -138,6 +138,11 @@ def test_admin_settings_update_playbook_and_style_profile(monkeypatch):
                 "icp_segments": ["B2B SaaS", "enterprise partnerships"],
                 "disqualifiers": ["students"],
                 "value_props": ["Turn booth scans into reviewed follow-up"],
+                "research_resources": [
+                    "https://example.com/customers",
+                    "Company partner directory",
+                ],
+                "research_instructions": "Prioritize partner pages and public event speaker pages.",
             },
         )
         assert updated_playbook.status_code == 200
@@ -146,6 +151,14 @@ def test_admin_settings_update_playbook_and_style_profile(monkeypatch):
             "B2B SaaS",
             "enterprise partnerships",
         ]
+        assert updated_playbook.json()["research_resources"] == [
+            "https://example.com/customers",
+            "Company partner directory",
+        ]
+        assert (
+            updated_playbook.json()["research_instructions"]
+            == "Prioritize partner pages and public event speaker pages."
+        )
 
         profiles = client.get("/api/admin/style-profiles")
         assert profiles.status_code == 200
