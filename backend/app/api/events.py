@@ -13,7 +13,8 @@ async def discover_events(
     payload: EventDiscoveryRequest,
     store: AppStore = Depends(get_store),
 ) -> EventDiscoveryRead:
-    discovery = await discover_industry_events(payload)
+    playbooks = await store.list_playbooks()
+    discovery = await discover_industry_events(payload, playbooks[0] if playbooks else None)
     return await store.save_event_discovery(discovery)
 
 

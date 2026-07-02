@@ -223,10 +223,18 @@ class CrmSyncResult(BaseModel):
 class PlaybookUpsert(BaseModel):
     name: str
     icp_segments: list[str] = Field(default_factory=list)
+    target_personas: list[str] = Field(default_factory=list)
     disqualifiers: list[str] = Field(default_factory=list)
+    negative_signals: list[str] = Field(default_factory=list)
     value_props: list[str] = Field(default_factory=list)
+    priority_signals: list[str] = Field(default_factory=list)
+    trusted_sources: list[str] = Field(default_factory=list)
     research_resources: list[str] = Field(default_factory=list)
     research_instructions: str = ""
+    competitors: list[str] = Field(default_factory=list)
+    proof_points: list[str] = Field(default_factory=list)
+    personalization_rules: list[str] = Field(default_factory=list)
+    research_freshness_days: int = Field(default=90, ge=1, le=3650)
 
 
 class Playbook(PlaybookUpsert):

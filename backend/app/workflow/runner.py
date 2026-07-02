@@ -44,7 +44,7 @@ async def run_capture_workflow(store: AppStore, capture_id: str) -> None:
                 _complete_step(
                     "playbook_context",
                     (
-                        "Loaded ICP, disqualifiers, value props, and "
+                        "Loaded ICP, personas, priority signals, source policy, value props, and "
                         f"{len(playbook.research_resources)} configured research resource(s)."
                     ),
                     _playbook_rationale(playbook),
@@ -180,9 +180,21 @@ def _build_strategy(capture, company_name: str, signals: list[Signal], playbook=
     reasons = ["Uses submitted conversation context and conservative signal detection."]
     if playbook:
         reasons.append(f"Uses saved playbook: {playbook.name}.")
+        if playbook.target_personas:
+            reasons.append(f"Targets personas including {', '.join(playbook.target_personas[:3])}.")
+        if playbook.priority_signals:
+            reasons.append(
+                f"Prioritizes signals including {', '.join(playbook.priority_signals[:3])}."
+            )
         if playbook.research_resources:
             reasons.append(
                 f"Agent should prioritize {len(playbook.research_resources)} configured resource(s)."
+            )
+        if playbook.proof_points:
+            reasons.append(f"Uses proof point: {playbook.proof_points[0]}.")
+        if playbook.research_freshness_days:
+            reasons.append(
+                f"Research freshness window: last {playbook.research_freshness_days} days."
             )
     return PitchStrategy(
         recommended_angle=f"Reference the recent conversation and connect it to {primary_signal}.",
@@ -199,12 +211,22 @@ def _build_strategy(capture, company_name: str, signals: list[Signal], playbook=
 
 
 def _playbook_rationale(playbook) -> str:
+    parts = []
+    if playbook.target_personas:
+        parts.append(f"target personas: {', '.join(playbook.target_personas[:3])}")
+    if playbook.priority_signals:
+        parts.append(f"priority signals: {', '.join(playbook.priority_signals[:3])}")
+    if playbook.trusted_sources:
+        parts.append(f"trusted sources: {', '.join(playbook.trusted_sources[:3])}")
     if playbook.research_resources:
-        first_resources = ", ".join(playbook.research_resources[:3])
-        return f"Configured agent research resources include: {first_resources}."
+        parts.append(f"research resources: {', '.join(playbook.research_resources[:3])}")
+    if playbook.personalization_rules:
+        parts.append(f"personalization rule: {playbook.personalization_rules[0]}")
     if playbook.research_instructions:
-        return f"Configured agent research instructions: {playbook.research_instructions}"
-    return "No agent research resources configured yet."
+        parts.append(f"instructions: {playbook.research_instructions}")
+    if parts:
+        return "Configured playbook context includes " + "; ".join(parts) + "."
+    return "No directed playbook context configured yet."
 
 
 def _build_drafts(report: ReportRead) -> list[OutreachDraftRead]:

@@ -136,13 +136,21 @@ def test_admin_settings_update_playbook_and_style_profile(monkeypatch):
             json={
                 "name": "Enterprise events",
                 "icp_segments": ["B2B SaaS", "enterprise partnerships"],
+                "target_personas": ["VP Sales", "Head of Partnerships"],
                 "disqualifiers": ["students"],
+                "negative_signals": ["No B2B motion"],
                 "value_props": ["Turn booth scans into reviewed follow-up"],
+                "priority_signals": ["event sponsorship", "partner hiring"],
+                "trusted_sources": ["Company website", "Event speaker pages"],
                 "research_resources": [
                     "https://example.com/customers",
                     "Company partner directory",
                 ],
                 "research_instructions": "Prioritize partner pages and public event speaker pages.",
+                "competitors": ["Manual CRM workflows"],
+                "proof_points": ["Reduced event follow-up time by 50%"],
+                "personalization_rules": ["Reference event context first"],
+                "research_freshness_days": 120,
             },
         )
         assert updated_playbook.status_code == 200
@@ -150,6 +158,10 @@ def test_admin_settings_update_playbook_and_style_profile(monkeypatch):
         assert updated_playbook.json()["icp_segments"] == [
             "B2B SaaS",
             "enterprise partnerships",
+        ]
+        assert updated_playbook.json()["target_personas"] == [
+            "VP Sales",
+            "Head of Partnerships",
         ]
         assert updated_playbook.json()["research_resources"] == [
             "https://example.com/customers",
@@ -159,6 +171,15 @@ def test_admin_settings_update_playbook_and_style_profile(monkeypatch):
             updated_playbook.json()["research_instructions"]
             == "Prioritize partner pages and public event speaker pages."
         )
+        assert updated_playbook.json()["priority_signals"] == [
+            "event sponsorship",
+            "partner hiring",
+        ]
+        assert updated_playbook.json()["trusted_sources"] == [
+            "Company website",
+            "Event speaker pages",
+        ]
+        assert updated_playbook.json()["research_freshness_days"] == 120
 
         profiles = client.get("/api/admin/style-profiles")
         assert profiles.status_code == 200

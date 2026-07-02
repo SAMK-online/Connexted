@@ -44,10 +44,18 @@ from app.schemas import (
 DEFAULT_PLAYBOOK_DATA = {
     "name": "Default GTM Playbook",
     "icp_segments": ["B2B software", "partnership-led growth"],
+    "target_personas": ["VP Sales", "Head of Partnerships", "RevOps Director"],
     "disqualifiers": ["student project", "non-business use"],
+    "negative_signals": ["No B2B motion", "No sales or partnerships team"],
     "value_props": ["Increase speed from event conversation to reviewed outreach"],
+    "priority_signals": ["partnership interest", "event sponsorship", "hiring or team growth"],
+    "trusted_sources": ["Company website", "Press releases", "Event speaker pages"],
     "research_resources": [],
     "research_instructions": "",
+    "competitors": [],
+    "proof_points": [],
+    "personalization_rules": ["Reference the event or conversation before pitching."],
+    "research_freshness_days": 90,
 }
 
 DEFAULT_STYLE_PROFILE_DATA = {
@@ -1324,20 +1332,36 @@ class PostgresStore:
                               organization_id,
                               name,
                               icp_segments,
+                              target_personas,
                               disqualifiers,
+                              negative_signals,
                               value_props,
+                              priority_signals,
+                              trusted_sources,
                               research_resources,
                               research_instructions,
+                              competitors,
+                              proof_points,
+                              personalization_rules,
+                              research_freshness_days,
                               is_default
                             )
                             values (
                               :organization_id,
                               :name,
                               cast(:icp_segments as jsonb),
+                              cast(:target_personas as jsonb),
                               cast(:disqualifiers as jsonb),
+                              cast(:negative_signals as jsonb),
                               cast(:value_props as jsonb),
+                              cast(:priority_signals as jsonb),
+                              cast(:trusted_sources as jsonb),
                               cast(:research_resources as jsonb),
                               :research_instructions,
+                              cast(:competitors as jsonb),
+                              cast(:proof_points as jsonb),
+                              cast(:personalization_rules as jsonb),
+                              :research_freshness_days,
                               true
                             )
                             returning *
@@ -1347,13 +1371,25 @@ class PostgresStore:
                             "organization_id": organization_id,
                             "name": DEFAULT_PLAYBOOK_DATA["name"],
                             "icp_segments": _json(DEFAULT_PLAYBOOK_DATA["icp_segments"]),
+                            "target_personas": _json(DEFAULT_PLAYBOOK_DATA["target_personas"]),
                             "disqualifiers": _json(DEFAULT_PLAYBOOK_DATA["disqualifiers"]),
+                            "negative_signals": _json(DEFAULT_PLAYBOOK_DATA["negative_signals"]),
                             "value_props": _json(DEFAULT_PLAYBOOK_DATA["value_props"]),
+                            "priority_signals": _json(DEFAULT_PLAYBOOK_DATA["priority_signals"]),
+                            "trusted_sources": _json(DEFAULT_PLAYBOOK_DATA["trusted_sources"]),
                             "research_resources": _json(
                                 DEFAULT_PLAYBOOK_DATA["research_resources"]
                             ),
                             "research_instructions": DEFAULT_PLAYBOOK_DATA[
                                 "research_instructions"
+                            ],
+                            "competitors": _json(DEFAULT_PLAYBOOK_DATA["competitors"]),
+                            "proof_points": _json(DEFAULT_PLAYBOOK_DATA["proof_points"]),
+                            "personalization_rules": _json(
+                                DEFAULT_PLAYBOOK_DATA["personalization_rules"]
+                            ),
+                            "research_freshness_days": DEFAULT_PLAYBOOK_DATA[
+                                "research_freshness_days"
                             ],
                         },
                     )
@@ -1374,10 +1410,18 @@ class PostgresStore:
                         update public.playbooks
                         set name = :name,
                             icp_segments = cast(:icp_segments as jsonb),
+                            target_personas = cast(:target_personas as jsonb),
                             disqualifiers = cast(:disqualifiers as jsonb),
+                            negative_signals = cast(:negative_signals as jsonb),
                             value_props = cast(:value_props as jsonb),
+                            priority_signals = cast(:priority_signals as jsonb),
+                            trusted_sources = cast(:trusted_sources as jsonb),
                             research_resources = cast(:research_resources as jsonb),
                             research_instructions = :research_instructions,
+                            competitors = cast(:competitors as jsonb),
+                            proof_points = cast(:proof_points as jsonb),
+                            personalization_rules = cast(:personalization_rules as jsonb),
+                            research_freshness_days = :research_freshness_days,
                             updated_at = now()
                         where id = :playbook_id
                         returning *
@@ -1387,10 +1431,18 @@ class PostgresStore:
                         "playbook_id": playbook_id,
                         "name": payload.name,
                         "icp_segments": _json(payload.icp_segments),
+                        "target_personas": _json(payload.target_personas),
                         "disqualifiers": _json(payload.disqualifiers),
+                        "negative_signals": _json(payload.negative_signals),
                         "value_props": _json(payload.value_props),
+                        "priority_signals": _json(payload.priority_signals),
+                        "trusted_sources": _json(payload.trusted_sources),
                         "research_resources": _json(payload.research_resources),
                         "research_instructions": payload.research_instructions,
+                        "competitors": _json(payload.competitors),
+                        "proof_points": _json(payload.proof_points),
+                        "personalization_rules": _json(payload.personalization_rules),
+                        "research_freshness_days": payload.research_freshness_days,
                     },
                 )
             ).mappings().first()
@@ -2035,10 +2087,18 @@ def _playbook_from_row(row) -> Playbook:
         id=str(row["id"]),
         name=row["name"],
         icp_segments=_parse_json(row["icp_segments"], []),
+        target_personas=_parse_json(row["target_personas"], []),
         disqualifiers=_parse_json(row["disqualifiers"], []),
+        negative_signals=_parse_json(row["negative_signals"], []),
         value_props=_parse_json(row["value_props"], []),
+        priority_signals=_parse_json(row["priority_signals"], []),
+        trusted_sources=_parse_json(row["trusted_sources"], []),
         research_resources=_parse_json(row["research_resources"], []),
         research_instructions=row["research_instructions"] or "",
+        competitors=_parse_json(row["competitors"], []),
+        proof_points=_parse_json(row["proof_points"], []),
+        personalization_rules=_parse_json(row["personalization_rules"], []),
+        research_freshness_days=row["research_freshness_days"] or 90,
     )
 
 

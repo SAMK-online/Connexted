@@ -7,11 +7,14 @@ from app.schemas import (
     EventOutreachDraft,
     EventSource,
     IndustryEventRead,
+    Playbook,
     new_id,
 )
 
 
-async def discover_industry_events(payload: EventDiscoveryRequest) -> EventDiscoveryRead:
+async def discover_industry_events(
+    payload: EventDiscoveryRequest, playbook: Playbook | None = None
+) -> EventDiscoveryRead:
     """Mockable Event Radar discovery provider.
 
     Production implementation should use Tavily/public web search and source extraction,
@@ -19,8 +22,11 @@ async def discover_industry_events(payload: EventDiscoveryRequest) -> EventDisco
     """
 
     discovery_id = new_id("evdisc")
-    event_specs = _event_specs(payload)
-    events = [_build_event(payload, discovery_id, spec, index) for index, spec in enumerate(event_specs)]
+    event_specs = _event_specs(payload, playbook)
+    events = [
+        _build_event(payload, discovery_id, spec, index, playbook)
+        for index, spec in enumerate(event_specs)
+    ]
     return EventDiscoveryRead(
         id=discovery_id,
         organization_id=payload.organization_id,
@@ -29,17 +35,19 @@ async def discover_industry_events(payload: EventDiscoveryRequest) -> EventDisco
         events=events,
         warnings=[
             "Event Radar is using mock discovery until Tavily/public web providers are configured.",
-            (
-                "Attendees are limited to public speakers, sponsors, exhibitors, organizers, "
-                "or explicitly listed attendees."
-            ),
+            "Attendees are limited to public speakers, sponsors, exhibitors, organizers, or explicitly listed attendees.",
         ],
     )
 
 
-def _event_specs(payload: EventDiscoveryRequest) -> list[dict[str, str]]:
+def _event_specs(
+    payload: EventDiscoveryRequest, playbook: Playbook | None = None
+) -> list[dict[str, str]]:
     industry = payload.industry.strip() or "GTM"
     region = payload.region or "North America"
+    priority_signal = (
+        playbook.priority_signals[0] if playbook and playbook.priority_signals else "growth"
+    )
     return [
         {
             "name": f"{industry} Growth Summit",
@@ -54,7 +62,7 @@ def _event_specs(payload: EventDiscoveryRequest) -> list[dict[str, str]]:
             "name": f"{industry} Partnerships Forum",
             "type": "partner_event",
             "location": region,
-            "reason": "Likely to surface channel, ecosystem, and partner-led expansion conversations.",
+            "reason": f"Likely to surface {priority_signal} and partner-led expansion conversations.",
         },
         {
             "name": f"{industry} Revenue Leadership Roundtable",
@@ -73,6 +81,7 @@ def _build_event(
     discovery_id: str,
     spec: dict[str, str],
     index: int,
+    playbook: Playbook | None = None,
 ) -> IndustryEventRead:
     event_id = new_id("evt")
     source = EventSource(
@@ -85,7 +94,7 @@ def _build_event(
         ),
         confidence=ConfidenceLabel.LOW,
     )
-    attendees = _build_attendees(payload, event_id, [source.id], index)
+    attendees = _build_attendees(payload, event_id, [source.id], index, playbook)
     event = IndustryEventRead(
         id=event_id,
         organization_id=payload.organization_id,
@@ -101,6 +110,7 @@ def _build_event(
             "Matches requested industry.",
             "Contains public roles likely relevant to sales or partnership outreach.",
             "Can generate pre-event meeting requests before a rep attends.",
+            *_playbook_fit_reasons(playbook),
         ],
         confidence=ConfidenceLabel.LOW,
         sources=[source],
@@ -115,13 +125,20 @@ def _build_attendees(
     event_id: str,
     source_ids: list[str],
     event_index: int,
+    playbook: Playbook | None = None,
 ) -> list[EventAttendee]:
-    persona = payload.personas[0] if payload.personas else "GTM leader"
+    persona = (
+        payload.personas[0]
+        if payload.personas
+        else playbook.target_personas[0]
+        if playbook and playbook.target_personas
+        else "GTM leader"
+    )
     vertical = payload.verticals[0] if payload.verticals else payload.industry
     candidates = [
         {
             "name": "Public Speaker Candidate",
-            "title": f"VP {persona}",
+            "title": persona,
             "company": f"{vertical} Operator Co.",
             "role": "speaker",
             "angle": "Reference their event session and ask to compare notes before the event.",
@@ -162,6 +179,21 @@ def _build_attendees(
             )
         )
     return attendees
+
+
+def _playbook_fit_reasons(playbook: Playbook | None) -> list[str]:
+    if not playbook:
+        return []
+    reasons = []
+    if playbook.target_personas:
+        reasons.append(f"Uses saved target personas: {', '.join(playbook.target_personas[:2])}.")
+    if playbook.priority_signals:
+        reasons.append(f"Prioritizes signals: {', '.join(playbook.priority_signals[:2])}.")
+    if playbook.trusted_sources:
+        reasons.append(f"Prefers trusted sources: {', '.join(playbook.trusted_sources[:2])}.")
+    if playbook.research_freshness_days:
+        reasons.append(f"Research freshness window: {playbook.research_freshness_days} days.")
+    return reasons
 
 
 def _build_event_drafts(event: IndustryEventRead) -> list[EventOutreachDraft]:

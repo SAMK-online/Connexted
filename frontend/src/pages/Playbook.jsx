@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Link2, Save, Search } from "lucide-react";
+import {
+  BookOpen,
+  BriefcaseBusiness,
+  FileCheck2,
+  Link2,
+  Radar,
+  Save,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  Target
+} from "lucide-react";
 import { listPlaybooks, updatePlaybook } from "../lib/api.js";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,10 +24,18 @@ import { Textarea } from "@/components/ui/textarea";
 const EMPTY_PLAYBOOK = {
   name: "",
   icp_segments: "",
+  target_personas: "",
   disqualifiers: "",
+  negative_signals: "",
   value_props: "",
+  priority_signals: "",
+  trusted_sources: "",
   research_resources: "",
-  research_instructions: ""
+  research_instructions: "",
+  competitors: "",
+  proof_points: "",
+  personalization_rules: "",
+  research_freshness_days: 90
 };
 
 export default function Playbook() {
@@ -33,10 +52,18 @@ export default function Playbook() {
     setForm({
       name: activePlaybook.name || "",
       icp_segments: listToText(activePlaybook.icp_segments),
+      target_personas: listToText(activePlaybook.target_personas),
       disqualifiers: listToText(activePlaybook.disqualifiers),
+      negative_signals: listToText(activePlaybook.negative_signals),
       value_props: listToText(activePlaybook.value_props),
+      priority_signals: listToText(activePlaybook.priority_signals),
+      trusted_sources: listToText(activePlaybook.trusted_sources),
       research_resources: listToText(activePlaybook.research_resources),
-      research_instructions: activePlaybook.research_instructions || ""
+      research_instructions: activePlaybook.research_instructions || "",
+      competitors: listToText(activePlaybook.competitors),
+      proof_points: listToText(activePlaybook.proof_points),
+      personalization_rules: listToText(activePlaybook.personalization_rules),
+      research_freshness_days: activePlaybook.research_freshness_days || 90
     });
   }, [activePlaybook]);
 
@@ -46,10 +73,18 @@ export default function Playbook() {
       setForm({
         name: data.name || "",
         icp_segments: listToText(data.icp_segments),
+        target_personas: listToText(data.target_personas),
         disqualifiers: listToText(data.disqualifiers),
+        negative_signals: listToText(data.negative_signals),
         value_props: listToText(data.value_props),
+        priority_signals: listToText(data.priority_signals),
+        trusted_sources: listToText(data.trusted_sources),
         research_resources: listToText(data.research_resources),
-        research_instructions: data.research_instructions || ""
+        research_instructions: data.research_instructions || "",
+        competitors: listToText(data.competitors),
+        proof_points: listToText(data.proof_points),
+        personalization_rules: listToText(data.personalization_rules),
+        research_freshness_days: data.research_freshness_days || 90
       });
       queryClient.invalidateQueries({ queryKey: ["admin", "playbooks"] });
     }
@@ -63,10 +98,18 @@ export default function Playbook() {
       payload: {
         name: form.name.trim(),
         icp_segments: textToList(form.icp_segments),
+        target_personas: textToList(form.target_personas),
         disqualifiers: textToList(form.disqualifiers),
+        negative_signals: textToList(form.negative_signals),
         value_props: textToList(form.value_props),
+        priority_signals: textToList(form.priority_signals),
+        trusted_sources: textToList(form.trusted_sources),
         research_resources: textToList(form.research_resources),
-        research_instructions: form.research_instructions.trim()
+        research_instructions: form.research_instructions.trim(),
+        competitors: textToList(form.competitors),
+        proof_points: textToList(form.proof_points),
+        personalization_rules: textToList(form.personalization_rules),
+        research_freshness_days: clampDays(form.research_freshness_days)
       }
     });
   }
@@ -76,65 +119,174 @@ export default function Playbook() {
       <PageHeader
         eyebrow="Agent context"
         title="Playbook"
-        subtitle="Control the ICP, value props, and research places the agents should prioritize."
+        subtitle="Direct enrichment, qualification, source selection, and personalization with company-specific rules."
         action={<Badge variant="outline">Default agent context</Badge>}
       />
 
       <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
-        <Card>
-          <CardHeader>
-            <BookOpen className="h-5 w-5" />
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle>Qualification rules</CardTitle>
-                <CardDescription>
-                  These inputs shape event fit, signal interpretation, and pitch strategy.
-                </CardDescription>
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <BookOpen className="h-5 w-5" />
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle>Fit and qualification</CardTitle>
+                  <CardDescription>
+                    Define who the agents should consider relevant and who they should filter out.
+                  </CardDescription>
+                </div>
+                <Badge variant="muted">Default</Badge>
               </div>
-              <Badge variant="muted">Default</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <Field label="Name" htmlFor="playbook-name">
-              <Input
-                id="playbook-name"
-                value={form.name}
-                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                required
-              />
-            </Field>
-            <Field label="ICP segments" htmlFor="icp-segments">
-              <Textarea
-                id="icp-segments"
-                value={form.icp_segments}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, icp_segments: event.target.value }))
-                }
-                placeholder={"B2B software\nPartnership-led growth"}
-              />
-            </Field>
-            <Field label="Disqualifiers" htmlFor="disqualifiers">
-              <Textarea
-                id="disqualifiers"
-                value={form.disqualifiers}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, disqualifiers: event.target.value }))
-                }
-                placeholder={"Student project\nNon-business use"}
-              />
-            </Field>
-            <Field label="Value props" htmlFor="value-props">
-              <Textarea
-                id="value-props"
-                value={form.value_props}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, value_props: event.target.value }))
-                }
-                placeholder={"Increase speed from event conversation to reviewed outreach"}
-              />
-            </Field>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-2">
+              <Field label="Name" htmlFor="playbook-name">
+                <Input
+                  id="playbook-name"
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                  required
+                />
+              </Field>
+              <Field label="Research freshness days" htmlFor="research-freshness">
+                <Input
+                  id="research-freshness"
+                  type="number"
+                  min="1"
+                  max="3650"
+                  value={form.research_freshness_days}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      research_freshness_days: event.target.value
+                    }))
+                  }
+                  required
+                />
+              </Field>
+              <Field label="ICP segments" htmlFor="icp-segments">
+                <Textarea
+                  id="icp-segments"
+                  value={form.icp_segments}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, icp_segments: event.target.value }))
+                  }
+                  placeholder={"B2B software\nPartnership-led growth"}
+                />
+              </Field>
+              <Field label="Target personas" htmlFor="target-personas">
+                <Textarea
+                  id="target-personas"
+                  value={form.target_personas}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, target_personas: event.target.value }))
+                  }
+                  placeholder={"VP Sales\nHead of Partnerships\nRevOps Director"}
+                />
+              </Field>
+              <Field label="Disqualifiers" htmlFor="disqualifiers">
+                <Textarea
+                  id="disqualifiers"
+                  value={form.disqualifiers}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, disqualifiers: event.target.value }))
+                  }
+                  placeholder={"Student project\nNon-business use"}
+                />
+              </Field>
+              <Field label="Negative signals" htmlFor="negative-signals">
+                <Textarea
+                  id="negative-signals"
+                  value={form.negative_signals}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, negative_signals: event.target.value }))
+                  }
+                  placeholder={"No B2B motion\nNo sales or partnerships team"}
+                />
+              </Field>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Radar className="h-5 w-5" />
+              <CardTitle>Signals and positioning</CardTitle>
+              <CardDescription>
+                Tell the agent which business triggers and proof points should drive strategy.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-2">
+              <Field label="Priority signals" htmlFor="priority-signals">
+                <Textarea
+                  id="priority-signals"
+                  value={form.priority_signals}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, priority_signals: event.target.value }))
+                  }
+                  placeholder={"Event sponsorship\nNew partner program\nHiring revenue roles"}
+                />
+              </Field>
+              <Field label="Value props" htmlFor="value-props">
+                <Textarea
+                  id="value-props"
+                  value={form.value_props}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, value_props: event.target.value }))
+                  }
+                  placeholder={"Increase speed from event conversation to reviewed outreach"}
+                />
+              </Field>
+              <Field label="Proof points" htmlFor="proof-points">
+                <Textarea
+                  id="proof-points"
+                  value={form.proof_points}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, proof_points: event.target.value }))
+                  }
+                  placeholder={"Reduced follow-up time by 50%\nUsed by partnership-led SaaS teams"}
+                />
+              </Field>
+              <Field label="Competitors / alternatives" htmlFor="competitors">
+                <Textarea
+                  id="competitors"
+                  value={form.competitors}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, competitors: event.target.value }))
+                  }
+                  placeholder={"Manual CRM workflow\nGeneric enrichment tools\nSpreadsheet handoff"}
+                />
+              </Field>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Sparkles className="h-5 w-5" />
+              <CardTitle>Personalization rules</CardTitle>
+              <CardDescription>
+                Control how research should be connected to the pitch and outreach drafts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Field label="Rules" htmlFor="personalization-rules">
+                <Textarea
+                  id="personalization-rules"
+                  value={form.personalization_rules}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      personalization_rules: event.target.value
+                    }))
+                  }
+                  placeholder={
+                    "Reference event context before product value\nAvoid generic funding congratulations\nTie every claim to a source"
+                  }
+                />
+              </Field>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="flex flex-col gap-6">
           <Card>
@@ -146,6 +298,16 @@ export default function Playbook() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
+              <Field label="Trusted sources" htmlFor="trusted-sources">
+                <Textarea
+                  id="trusted-sources"
+                  value={form.trusted_sources}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, trusted_sources: event.target.value }))
+                  }
+                  placeholder={"Company website\nPress releases\nEvent speaker pages"}
+                />
+              </Field>
               <Field label="Resources / places to look" htmlFor="research-resources">
                 <Textarea
                   id="research-resources"
@@ -183,13 +345,15 @@ export default function Playbook() {
               <Search className="h-5 w-5" />
               <CardTitle>Agent usage</CardTitle>
               <CardDescription>
-                Saved resources are loaded into the workflow trace and strategy context.
+                Saved fields are loaded into enrichment, signal, strategy, and draft context.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
-                One item per line. Use this for websites, databases, event pages, directories, or
-                named places the agent should inspect before drafting outreach.
+              <div className="grid gap-3">
+                <UsageItem icon={Target} label="Qualification" value="ICP, personas, exclusions" />
+                <UsageItem icon={ShieldAlert} label="Source policy" value="Trusted sources, freshness" />
+                <UsageItem icon={FileCheck2} label="Evidence" value="Proof points, resources" />
+                <UsageItem icon={BriefcaseBusiness} label="Positioning" value="Signals, competitors" />
               </div>
               <FormFooter
                 disabled={playbooks.isLoading || !activePlaybook || mutation.isPending}
@@ -212,6 +376,18 @@ function Field({ label, htmlFor, children }) {
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function UsageItem({ icon: Icon, label, value }) {
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-border bg-secondary/30 p-3">
+      <Icon className="h-4 w-4 shrink-0" />
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">{value}</p>
+      </div>
     </div>
   );
 }
@@ -242,4 +418,10 @@ function textToList(value) {
     .split(/\r?\n/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function clampDays(value) {
+  const parsed = Number(value || 90);
+  if (Number.isNaN(parsed)) return 90;
+  return Math.min(Math.max(Math.round(parsed), 1), 3650);
 }
