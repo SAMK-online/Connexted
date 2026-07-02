@@ -19,10 +19,12 @@ import {
 import { Wordmark } from "@/components/Wordmark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import heroImage from "@/assets/connexted-hero.png";
 
 const NAV_LINKS = [
   { href: "#how", label: "How it works" },
   { href: "#pipeline", label: "The pipeline" },
+  { href: "#playbook", label: "Playbook" },
   { href: "#features", label: "Platform" },
   { href: "#trust", label: "Trust model" }
 ];
@@ -45,7 +47,8 @@ const FLOWS = [
     lead: "Know the room before you walk into it.",
     steps: [
       "Enter an industry, region, date range, personas, verticals, and keywords.",
-      "CONNEXTed finds relevant events and qualifies them against your ICP and playbooks.",
+      "CONNEXTed qualifies events against your Playbook: target personas, priority signals, exclusions, and trusted sources.",
+      "Paste resources, directories, event pages, and source instructions that agents should inspect.",
       "It surfaces 2–3 public, high-potential people per event — speakers, sponsors, exhibitors, organizers.",
       "Every pick ships with why it's relevant, the evidence behind it, and a pre-event outreach angle."
     ]
@@ -56,8 +59,8 @@ const FLOWS = [
     lead: "Send a card photo. Get a reviewed follow-up.",
     steps: [
       "Message a business-card image, prospect details, and quick notes through WhatsApp.",
-      "A multi-agent workflow parses the card, enriches the person and company, and detects GTM signals.",
-      "It drafts positioning, objections, next best action, and email + LinkedIn outreach.",
+      "A multi-agent workflow parses the card, enriches the person and company, and checks your saved source policy.",
+      "It detects priority signals, applies proof points and value props, then drafts email + LinkedIn outreach.",
       "You review, edit, approve, reject, or regenerate — then sync to HubSpot or export."
     ]
   }
@@ -72,17 +75,17 @@ const PIPELINE = [
   {
     icon: Building2,
     name: "Enrichment",
-    detail: "Adds company, person, source, and internal-memory context from public + private signals."
+    detail: "Looks through trusted sources, pasted resources, and public context before enriching a record."
   },
   {
     icon: Radio,
     name: "Signal detection",
-    detail: "Flags hiring, expansion, partnerships, funding, launches — each labeled with evidence."
+    detail: "Flags your priority signals — hiring, expansion, partnerships, funding, launches — with evidence."
   },
   {
     icon: Target,
     name: "Pitch strategy",
-    detail: "Builds positioning, pain hypothesis, value prop, objections, and next best action."
+    detail: "Uses value props, proof points, competitors, and personalization rules to shape next steps."
   },
   {
     icon: PenLine,
@@ -110,17 +113,17 @@ const FEATURES = [
   {
     icon: Building2,
     title: "Contact & company enrichment",
-    body: "Normalized records enriched from public sources and your internal knowledge base."
+    body: "Normalized records enriched from public sources, trusted resources, and your internal knowledge base."
   },
   {
     icon: Radio,
     title: "Evidence-backed signals",
-    body: "Timely GTM reasons to follow up — every claim tied to a source or clearly marked inferred."
+    body: "Timely GTM reasons to follow up — weighted by your priority signals and tied to evidence."
   },
   {
     icon: Target,
     title: "Pitch strategy",
-    body: "Positioning, objections, and next steps generated from the actual conversation context."
+    body: "Positioning, objections, and next steps generated from conversation context and proof points."
   },
   {
     icon: PenLine,
@@ -144,8 +147,8 @@ const FEATURES = [
   },
   {
     icon: BookOpen,
-    title: "Playbooks & style profiles",
-    body: "Encode your ICP, disqualifiers, value props, banned phrases, and CTA style once."
+    title: "Company-specific playbooks",
+    body: "Encode personas, priority signals, trusted sources, proof points, competitors, and freshness rules."
   },
   {
     icon: Sparkles,
@@ -164,9 +167,32 @@ const TRUST = [
 
 const STATS = [
   { value: "2–3", label: "Public prospects surfaced per event" },
-  { value: "5", label: "Specialized agents in every capture run" },
+  { value: "6", label: "Reviewable workflow steps per capture run" },
   { value: "0", label: "Messages sent without human approval" },
   { value: "1", label: "Review surface for evidence, strategy & drafts" }
+];
+
+const PLAYBOOK_CONTROLS = [
+  {
+    icon: Target,
+    title: "Personas & fit",
+    body: "Direct enrichment toward the buying committee, ICP segments, disqualifiers, and negative signals that matter."
+  },
+  {
+    icon: Radio,
+    title: "Priority signals",
+    body: "Tell agents which triggers count: hiring, event sponsorship, partnerships, launches, funding, or expansion."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Trusted sources",
+    body: "Rank company sites, press releases, event pages, directories, pasted resources, and freshness windows."
+  },
+  {
+    icon: Sparkles,
+    title: "Proof & personalization",
+    body: "Reuse approved proof points, competitor positioning, and rules for connecting research to outreach."
+  }
 ];
 
 export default function Landing() {
@@ -178,6 +204,7 @@ export default function Landing() {
       <Problem />
       <Flows />
       <Pipeline />
+      <PlaybookSection />
       <Features />
       <Trust />
       <CtaBand />
@@ -262,7 +289,28 @@ function Hero() {
           </Button>
         </div>
 
-        <dl className="mt-20 grid animate-fade-up grid-cols-2 gap-x-6 gap-y-8 border-t border-border pt-10 md:grid-cols-4">
+        <figure className="group mt-16 animate-fade-up overflow-hidden rounded-lg border border-border bg-foreground">
+          <div className="relative">
+            <img
+              src={heroImage}
+              alt="A rep on an event floor capturing a business card and WhatsApp conversation, with the CONNEXTed dashboard open on a laptop"
+              className="h-[300px] w-full object-cover saturate-[0.85] transition-all duration-700 ease-out group-hover:saturate-100 md:h-[460px]"
+              loading="eager"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/70 via-transparent to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between px-5 py-4">
+              <span className="flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.2em] text-background/85">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-background" />
+                Fig. 01 — Capture at the moment of conversation
+              </span>
+              <span className="hidden font-mono text-[0.7rem] uppercase tracking-[0.2em] text-background/60 sm:inline">
+                WhatsApp · Card · CRM
+              </span>
+            </div>
+          </div>
+        </figure>
+
+        <dl className="mt-16 grid animate-fade-up grid-cols-2 gap-x-6 gap-y-8 border-t border-border pt-10 md:grid-cols-4">
           {STATS.map((stat) => (
             <div key={stat.label}>
               <dt className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
@@ -410,11 +458,53 @@ function Pipeline() {
   );
 }
 
+function PlaybookSection() {
+  return (
+    <section id="playbook" className="border-b border-border">
+      <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
+        <SectionLabel index="03">Directed research</SectionLabel>
+        <div className="mt-8 grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <div>
+            <h2 className="font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
+              Your Playbook tells agents where to look and what matters.
+            </h2>
+            <p className="mt-5 max-w-md text-muted-foreground">
+              Generic enrichment creates generic outreach. CONNEXTed lets teams define the
+              research sources, signals, personas, proof points, and positioning rules that fit
+              their company.
+            </p>
+            <Button asChild className="mt-8" shape="pill">
+              <Link to="/app/playbook">
+                Configure the Playbook
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+
+          <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+            {PLAYBOOK_CONTROLS.map((control) => (
+              <div key={control.title} className="bg-background p-7">
+                <control.icon className="h-5 w-5" />
+                <h3 className="mt-5 font-display text-lg font-semibold tracking-tight">
+                  {control.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {control.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Features() {
   return (
     <section id="features" className="border-b border-border">
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
-        <SectionLabel index="03">The platform</SectionLabel>
+        <SectionLabel index="04">The platform</SectionLabel>
         <div className="mt-8 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <h2 className="max-w-2xl font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
             Everything between the handshake and the handoff.
@@ -450,7 +540,7 @@ function Trust() {
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
         <div className="grid gap-12 md:grid-cols-[1fr_1.2fr] md:gap-20">
           <div>
-            <SectionLabel index="04">Trust & review model</SectionLabel>
+            <SectionLabel index="05">Trust & review model</SectionLabel>
             <h2 className="mt-8 font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
               Assisted GTM execution. Never blind automation.
             </h2>
