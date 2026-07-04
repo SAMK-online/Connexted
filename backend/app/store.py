@@ -106,6 +106,8 @@ class AppStore(Protocol):
 
     async def list_reviews(self, capture_id: str) -> list[ReviewDecisionRead]: ...
 
+    async def has_crm_sync_approval(self, capture_id: str) -> bool: ...
+
     async def create_crm_sync(
         self, payload: CrmSyncRequest, external_ids: dict | None = None
     ) -> CrmSyncResult | None: ...
@@ -296,12 +298,14 @@ class InMemoryStore:
     async def list_reviews(self, capture_id: str) -> list[ReviewDecisionRead]:
         return self.reviews.get(capture_id, [])
 
+    async def has_crm_sync_approval(self, capture_id: str) -> bool:
+        approvals = self.reviews.get(capture_id, [])
+        return any(d.action == ReviewAction.APPROVE_CRM_SYNC for d in approvals)
+
     async def create_crm_sync(
         self, payload: CrmSyncRequest, external_ids: dict | None = None
     ) -> CrmSyncResult | None:
-        approvals = self.reviews.get(payload.capture_id, [])
-        has_approval = any(decision.action == ReviewAction.APPROVE_CRM_SYNC for decision in approvals)
-        if not has_approval:
+        if not await self.has_crm_sync_approval(payload.capture_id):
             return None
         ids = external_ids or _mock_crm_external_ids()
         result = CrmSyncResult(
@@ -1144,6 +1148,26 @@ class PostgresStore:
                 )
             ).mappings().all()
             return [_review_from_row(row) for row in rows]
+
+    async def has_crm_sync_approval(self, capture_id: str) -> bool:
+        if not _is_uuid(capture_id):
+            return False
+        async with self.engine.begin() as conn:
+            approval = (
+                await conn.execute(
+                    text(
+                        """
+                        select id
+                        from public.review_decisions
+                        where capture_id = :capture_id
+                          and action = 'approve_crm_sync'
+                        limit 1
+                        """
+                    ),
+                    {"capture_id": capture_id},
+                )
+            ).first()
+            return approval is not None
 
     async def create_crm_sync(
         self, payload: CrmSyncRequest, external_ids: dict | None = None

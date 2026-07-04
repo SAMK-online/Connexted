@@ -176,10 +176,29 @@ async def _create_object(access_token: str, object_type: str, properties: dict) 
     return response.json()
 
 
-async def sync_report(access_token: str, *, contact: dict, company: dict, task: dict) -> dict:
-    """Create a contact, company, and follow-up task; return external ids + url.
+async def _associate(
+    access_token: str, from_type: str, from_id: str, to_type: str, to_id: str
+) -> None:
+    """Create a HubSpot-default association between two CRM objects (v4 API)."""
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        response = await client.put(
+            f"{API_BASE}/crm/v4/objects/{from_type}/{from_id}/associations/default/{to_type}/{to_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    if response.status_code not in (200, 201):
+        raise HubSpotError(
+            f"HubSpot association {from_type}->{to_type} failed "
+            f"({response.status_code}): {response.text}"
+        )
+
+
+async def sync_report(
+    access_token: str, *, contact: dict, company: dict, task: dict, portal_id: str | None = None
+) -> dict:
+    """Create a contact, company, and follow-up task, associate them, return ids + url.
 
     Each argument is a HubSpot `properties` dict. Empty dicts are skipped.
+    The contact is associated with the company, and the task with the contact.
     """
     external_ids: dict[str, str | None] = {
         "hubspot_contact_id": None,
@@ -198,8 +217,21 @@ async def sync_report(access_token: str, *, contact: dict, company: dict, task: 
         external_ids["hubspot_task_id"] = task_obj.get("id")
 
     contact_id = external_ids["hubspot_contact_id"]
-    external_ids["external_url"] = (
-        f"https://app.hubspot.com/contacts/{contact_id}" if contact_id else None
-    )
+    company_id = external_ids["hubspot_company_id"]
+    task_id = external_ids["hubspot_task_id"]
+
+    if contact_id and company_id:
+        await _associate(access_token, "contacts", contact_id, "companies", company_id)
+    if task_id and contact_id:
+        await _associate(access_token, "tasks", task_id, "contacts", contact_id)
+
+    if contact_id and portal_id:
+        external_ids["external_url"] = (
+            f"https://app.hubspot.com/contacts/{portal_id}/record/0-1/{contact_id}"
+        )
+    elif contact_id:
+        external_ids["external_url"] = f"https://app.hubspot.com/contacts/{contact_id}"
+    else:
+        external_ids["external_url"] = None
     external_ids["message"] = "Synced contact, company, and follow-up task to HubSpot."
     return external_ids

@@ -69,6 +69,10 @@ async def sync_hubspot(
     settings: Settings = Depends(get_request_settings),
     store: AppStore = Depends(get_store),
 ) -> CrmSyncResult:
+    # Confirm human approval BEFORE writing anything to HubSpot, so an unapproved
+    # request can never create orphan CRM records.
+    if not await store.has_crm_sync_approval(payload.capture_id):
+        raise HTTPException(status_code=400, detail="CRM sync requires explicit approval")
     external_ids = await _real_hubspot_sync(payload, settings, store)
     # external_ids is None when HubSpot isn't configured/connected -> store falls back to mock.
     result = await store.create_crm_sync(payload, external_ids=external_ids)
@@ -109,7 +113,11 @@ async def _real_hubspot_sync(
             await store.update_crm_connection_tokens(connection["id"], new_blob)
         contact, company, task = _hubspot_payloads(report)
         return await hubspot.sync_report(
-            access_token, contact=contact, company=company, task=task
+            access_token,
+            contact=contact,
+            company=company,
+            task=task,
+            portal_id=connection.get("external_account_id"),
         )
     except hubspot.HubSpotError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
