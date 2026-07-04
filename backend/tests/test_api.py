@@ -97,6 +97,10 @@ def test_crm_sync_requires_explicit_review_approval(monkeypatch):
         assert synced.json()["status"] == "completed"
         assert synced.json()["hubspot_contact_id"] == "mock-contact"
 
+        job = client.get(f"/api/crm/jobs/{synced.json()['id']}")
+        assert job.status_code == 200
+        assert job.json()["id"] == synced.json()["id"]
+
 
 def test_event_discovery_persists_recommendations(monkeypatch):
     with make_client(monkeypatch) as client:

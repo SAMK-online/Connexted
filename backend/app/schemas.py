@@ -220,6 +220,23 @@ class CrmSyncResult(BaseModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class CrmConnectionRead(BaseModel):
+    id: str
+    organization_id: str
+    provider: str = "hubspot"
+    external_account_id: str | None = None
+    status: str = "connected"
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class CrmConnectionStatus(BaseModel):
+    provider: str = "hubspot"
+    configured: bool
+    connected: bool
+    external_account_id: str | None = None
+
+
 class PlaybookUpsert(BaseModel):
     name: str
     icp_segments: list[str] = Field(default_factory=list)

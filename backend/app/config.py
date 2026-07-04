@@ -1,11 +1,16 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# `.env` lives at the repository root; resolve it by absolute path so the backend
+# loads it regardless of the working directory it is launched from (e.g. `backend/`).
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=str(_ENV_FILE), extra="ignore")
 
     app_env: str = "development"
     api_base_url: str = "http://localhost:8000"
@@ -33,6 +38,20 @@ class Settings(BaseSettings):
     hubspot_client_id: str | None = None
     hubspot_client_secret: str | None = None
     hubspot_redirect_uri: str | None = None
+    hubspot_scopes: str = (
+        "crm.objects.contacts.read crm.objects.contacts.write "
+        "crm.objects.companies.read crm.objects.companies.write"
+    )
+    hubspot_token_encryption_key: str | None = None
+
+    @property
+    def hubspot_configured(self) -> bool:
+        return bool(
+            self.hubspot_client_id
+            and self.hubspot_client_secret
+            and self.hubspot_redirect_uri
+            and self.hubspot_token_encryption_key
+        )
 
     @property
     def cors_origins(self) -> list[str]:

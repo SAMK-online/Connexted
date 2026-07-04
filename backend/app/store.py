@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import ssl
 from collections import defaultdict
 from datetime import UTC, datetime
 from hashlib import sha256
@@ -18,6 +19,7 @@ from app.schemas import (
     CaptureCreate,
     CaptureRead,
     CaptureStatus,
+    CrmConnectionRead,
     CrmSyncRequest,
     CrmSyncResult,
     DraftRegenerateRequest,
@@ -30,6 +32,7 @@ from app.schemas import (
     OutreachDraftUpdate,
     Playbook,
     PlaybookUpsert,
+    new_id,
     ReportRead,
     ReviewAction,
     ReviewDecisionCreate,
@@ -103,9 +106,23 @@ class AppStore(Protocol):
 
     async def list_reviews(self, capture_id: str) -> list[ReviewDecisionRead]: ...
 
-    async def create_crm_sync(self, payload: CrmSyncRequest) -> CrmSyncResult | None: ...
+    async def create_crm_sync(
+        self, payload: CrmSyncRequest, external_ids: dict | None = None
+    ) -> CrmSyncResult | None: ...
 
     async def get_crm_sync(self, job_id: str) -> CrmSyncResult | None: ...
+
+    async def get_capture_organization_id(self, capture_id: str) -> str | None: ...
+
+    async def get_crm_connection(self, organization_id: str) -> dict | None: ...
+
+    async def save_crm_connection(
+        self, organization_id: str, external_account_id: str | None, encrypted_token_ref: str
+    ) -> CrmConnectionRead: ...
+
+    async def update_crm_connection_tokens(
+        self, connection_id: str, encrypted_token_ref: str
+    ) -> None: ...
 
     async def save_event_discovery(self, discovery: EventDiscoveryRead) -> EventDiscoveryRead: ...
 
@@ -149,6 +166,7 @@ class InMemoryStore:
         self.drafts: dict[str, OutreachDraftRead] = {}
         self.reviews: dict[str, list[ReviewDecisionRead]] = defaultdict(list)
         self.crm_results: dict[str, CrmSyncResult] = {}
+        self.crm_connections: dict[str, dict] = {}
         self.event_discoveries: dict[str, EventDiscoveryRead] = {}
         self.events: dict[str, IndustryEventRead] = {}
         self.playbooks: dict[str, Playbook] = {
@@ -278,25 +296,62 @@ class InMemoryStore:
     async def list_reviews(self, capture_id: str) -> list[ReviewDecisionRead]:
         return self.reviews.get(capture_id, [])
 
-    async def create_crm_sync(self, payload: CrmSyncRequest) -> CrmSyncResult | None:
+    async def create_crm_sync(
+        self, payload: CrmSyncRequest, external_ids: dict | None = None
+    ) -> CrmSyncResult | None:
         approvals = self.reviews.get(payload.capture_id, [])
         has_approval = any(decision.action == ReviewAction.APPROVE_CRM_SYNC for decision in approvals)
         if not has_approval:
             return None
+        ids = external_ids or _mock_crm_external_ids()
         result = CrmSyncResult(
             capture_id=payload.capture_id,
             status="completed",
-            hubspot_contact_id="mock-contact",
-            hubspot_company_id="mock-company",
-            hubspot_task_id="mock-task",
-            external_url="https://app.hubspot.com/contacts/mock",
-            message="Mock HubSpot contact, company, and follow-up task synced.",
+            hubspot_contact_id=ids.get("hubspot_contact_id"),
+            hubspot_company_id=ids.get("hubspot_company_id"),
+            hubspot_task_id=ids.get("hubspot_task_id"),
+            external_url=ids.get("external_url"),
+            message=ids.get("message", "CRM sync completed."),
         )
         self.crm_results[result.id] = result
         return result
 
     async def get_crm_sync(self, job_id: str) -> CrmSyncResult | None:
         return self.crm_results.get(job_id)
+
+    async def get_capture_organization_id(self, capture_id: str) -> str | None:
+        capture = self.captures.get(capture_id)
+        return str(capture.organization_id) if capture and capture.organization_id else None
+
+    async def get_crm_connection(self, organization_id: str) -> dict | None:
+        return self.crm_connections.get(organization_id)
+
+    async def save_crm_connection(
+        self, organization_id: str, external_account_id: str | None, encrypted_token_ref: str
+    ) -> CrmConnectionRead:
+        now = datetime.now(UTC)
+        existing = self.crm_connections.get(organization_id)
+        connection = {
+            "id": existing["id"] if existing else new_id("crmconn"),
+            "organization_id": organization_id,
+            "provider": "hubspot",
+            "external_account_id": external_account_id,
+            "encrypted_token_ref": encrypted_token_ref,
+            "status": "connected",
+            "created_at": existing["created_at"] if existing else now,
+            "updated_at": now,
+        }
+        self.crm_connections[organization_id] = connection
+        return _crm_connection_read(connection)
+
+    async def update_crm_connection_tokens(
+        self, connection_id: str, encrypted_token_ref: str
+    ) -> None:
+        for connection in self.crm_connections.values():
+            if connection["id"] == connection_id:
+                connection["encrypted_token_ref"] = encrypted_token_ref
+                connection["updated_at"] = datetime.now(UTC)
+                return
 
     async def save_event_discovery(self, discovery: EventDiscoveryRead) -> EventDiscoveryRead:
         self.event_discoveries[discovery.id] = discovery
@@ -1090,7 +1145,9 @@ class PostgresStore:
             ).mappings().all()
             return [_review_from_row(row) for row in rows]
 
-    async def create_crm_sync(self, payload: CrmSyncRequest) -> CrmSyncResult | None:
+    async def create_crm_sync(
+        self, payload: CrmSyncRequest, external_ids: dict | None = None
+    ) -> CrmSyncResult | None:
         if not _is_uuid(payload.capture_id):
             return None
         async with self.engine.begin() as conn:
@@ -1169,7 +1226,7 @@ class PostgresStore:
                     {
                         "organization_id": organization_id,
                         "crm_sync_job_id": job["id"],
-                        "external_ids": _json(_mock_crm_external_ids()),
+                        "external_ids": _json(external_ids or _mock_crm_external_ids()),
                     },
                 )
             ).mappings().one()
@@ -1199,6 +1256,87 @@ class PostgresStore:
             if not row:
                 return None
             return _crm_result_from_row(row, capture_id=str(row["capture_id"]), status=row["status"])
+
+    async def get_capture_organization_id(self, capture_id: str) -> str | None:
+        if not _is_uuid(capture_id):
+            return None
+        async with self.engine.connect() as conn:
+            return await self._organization_id_for_capture(conn, capture_id)
+
+    async def get_crm_connection(self, organization_id: str) -> dict | None:
+        async with self.engine.begin() as conn:
+            organization_id = await self._resolve_organization_id(conn, organization_id)
+            row = (
+                await conn.execute(
+                    text(
+                        """
+                        select id, organization_id, provider, external_account_id,
+                               encrypted_token_ref, status, created_at, updated_at
+                        from public.crm_connections
+                        where organization_id = :organization_id and provider = 'hubspot'
+                        order by updated_at desc
+                        limit 1
+                        """
+                    ),
+                    {"organization_id": organization_id},
+                )
+            ).mappings().first()
+            if not row:
+                return None
+            return {
+                "id": str(row["id"]),
+                "organization_id": str(row["organization_id"]),
+                "provider": row["provider"],
+                "external_account_id": row["external_account_id"],
+                "encrypted_token_ref": row["encrypted_token_ref"],
+                "status": row["status"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+            }
+
+    async def save_crm_connection(
+        self, organization_id: str, external_account_id: str | None, encrypted_token_ref: str
+    ) -> CrmConnectionRead:
+        async with self.engine.begin() as conn:
+            organization_id = await self._resolve_organization_id(conn, organization_id)
+            row = (
+                await conn.execute(
+                    text(
+                        """
+                        insert into public.crm_connections (
+                          organization_id, provider, external_account_id,
+                          encrypted_token_ref, status
+                        )
+                        values (:organization_id, 'hubspot', :external_account_id,
+                                :encrypted_token_ref, 'connected')
+                        returning *
+                        """
+                    ),
+                    {
+                        "organization_id": organization_id,
+                        "external_account_id": external_account_id,
+                        "encrypted_token_ref": encrypted_token_ref,
+                    },
+                )
+            ).mappings().one()
+            return _crm_connection_read(row)
+
+    async def update_crm_connection_tokens(
+        self, connection_id: str, encrypted_token_ref: str
+    ) -> None:
+        if not _is_uuid(connection_id):
+            return
+        async with self.engine.begin() as conn:
+            await conn.execute(
+                text(
+                    """
+                    update public.crm_connections
+                    set encrypted_token_ref = :encrypted_token_ref, updated_at = now()
+                    where id = :connection_id
+                    """
+                ),
+                {"connection_id": connection_id, "encrypted_token_ref": encrypted_token_ref},
+            )
 
     async def save_event_discovery(self, discovery: EventDiscoveryRead) -> EventDiscoveryRead:
         async with self.engine.begin() as conn:
@@ -1928,8 +2066,20 @@ def _async_database_url(database_url: str) -> tuple[URL | str, dict[str, Any]]:
     connect_args: dict[str, Any] = {}
     sslmode = url.query.get("sslmode")
     if sslmode:
-        connect_args["ssl"] = sslmode != "disable"
         url = url.difference_update_query(["sslmode"])
+        if sslmode == "disable":
+            connect_args["ssl"] = False
+        elif sslmode in {"verify-ca", "verify-full"}:
+            connect_args["ssl"] = ssl.create_default_context()
+        else:
+            # libpq `require`/`prefer`/`allow`: encrypt but do not verify the CA.
+            # Supabase's connection pooler presents a certificate that does not chain
+            # to the system trust store, so full verification would reject an
+            # otherwise-valid connection. Use verify-ca/verify-full to opt into checks.
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            connect_args["ssl"] = context
 
     return url, connect_args
 
@@ -2054,6 +2204,18 @@ def _review_from_row(row, fallback_reviewer_id: str = "demo-rep") -> ReviewDecis
         reviewer_id=str(row["reviewer_id"]) if row["reviewer_id"] else fallback_reviewer_id,
         reason=row["reason"],
         created_at=row["created_at"],
+    )
+
+
+def _crm_connection_read(row) -> CrmConnectionRead:
+    return CrmConnectionRead(
+        id=str(row["id"]),
+        organization_id=str(row["organization_id"]),
+        provider=row.get("provider", "hubspot") if isinstance(row, dict) else row["provider"],
+        external_account_id=row["external_account_id"],
+        status=row["status"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
     )
 
 
