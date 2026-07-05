@@ -64,6 +64,15 @@ export function syncHubSpot(payload) {
   });
 }
 
+export function getHubSpotStatus(organizationId) {
+  return request(`/api/crm/hubspot/status?organization_id=${encodeURIComponent(organizationId)}`);
+}
+
+// Full-page redirect target that kicks off the HubSpot OAuth consent flow.
+export function hubspotInstallUrl(organizationId) {
+  return `${API_BASE_URL}/api/crm/hubspot/install?organization_id=${encodeURIComponent(organizationId)}`;
+}
+
 export function discoverEvents(payload) {
   return request("/api/events/discover", {
     method: "POST",

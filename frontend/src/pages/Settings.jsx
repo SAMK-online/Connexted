@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Palette, Plug, Save, Shield } from "lucide-react";
-import { listStyleProfiles, updateStyleProfile } from "../lib/api.js";
+import { CheckCircle2, Palette, Plug, Save, Shield } from "lucide-react";
+import {
+  getHubSpotStatus,
+  hubspotInstallUrl,
+  listStyleProfiles,
+  updateStyleProfile
+} from "../lib/api.js";
+
+const DEMO_ORG = "demo-org";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,11 +25,6 @@ const EMPTY_STYLE_PROFILE = {
 };
 
 const PENDING_PANELS = [
-  {
-    icon: Plug,
-    title: "Integrations",
-    description: "Twilio WhatsApp intake, OCR, research, LLM, and HubSpot connections."
-  },
   {
     icon: Shield,
     title: "Governance",
@@ -160,6 +162,7 @@ export default function Settings() {
         </Card>
 
         <div className="grid gap-6">
+          <HubSpotCard />
           {PENDING_PANELS.map((panel) => (
             <Card key={panel.title}>
               <CardHeader>
@@ -177,6 +180,114 @@ export default function Settings() {
         </div>
       </div>
     </section>
+  );
+}
+
+function HubSpotCard() {
+  const status = useQuery({
+    queryKey: ["admin", "hubspotStatus", DEMO_ORG],
+    queryFn: () => getHubSpotStatus(DEMO_ORG)
+  });
+
+  // Read the ?hubspot=connected|error banner the OAuth callback redirects back with,
+  // then strip the param so a refresh doesn't keep showing it.
+  const [callbackResult, setCallbackResult] = useState(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get("hubspot");
+    if (!result) return;
+    setCallbackResult(result);
+    params.delete("hubspot");
+    const query = params.toString();
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}${query ? `?${query}` : ""}`
+    );
+  }, []);
+
+  const data = status.data;
+  const configured = data?.configured;
+  const connected = data?.connected;
+
+  return (
+    <Card>
+      <CardHeader>
+        <Plug className="h-5 w-5" />
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>HubSpot</CardTitle>
+            <CardDescription>
+              Push reviewed contacts, companies, and follow-up tasks into your CRM.
+            </CardDescription>
+          </div>
+          <ConnectionBadge status={status} configured={configured} connected={connected} />
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {callbackResult === "connected" ? (
+          <Banner tone="success">HubSpot connected. You can now sync approved reports.</Banner>
+        ) : null}
+        {callbackResult === "error" ? (
+          <Banner tone="error">HubSpot connection failed. Please try connecting again.</Banner>
+        ) : null}
+
+        {status.isLoading ? (
+          <p className="text-sm text-muted-foreground">Checking connection…</p>
+        ) : null}
+
+        {status.error ? (
+          <Banner tone="error">Couldn&apos;t load connection status: {status.error.message}</Banner>
+        ) : null}
+
+        {data && !configured ? (
+          <div className="rounded-md border border-dashed border-border bg-secondary/30 px-4 py-3 text-sm text-muted-foreground">
+            HubSpot isn&apos;t configured on the server. Set the <code>HUBSPOT_*</code> environment
+            variables to enable it.
+          </div>
+        ) : null}
+
+        {data && configured && connected ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4 text-foreground" />
+            <span>
+              Connected
+              {data.external_account_id ? ` to portal ${data.external_account_id}` : ""}.
+            </span>
+          </div>
+        ) : null}
+
+        {data && configured ? (
+          <Button
+            type="button"
+            variant={connected ? "outline" : "default"}
+            onClick={() => {
+              window.location.href = hubspotInstallUrl(DEMO_ORG);
+            }}
+          >
+            <Plug className="h-4 w-4" />
+            {connected ? "Reconnect HubSpot" : "Connect HubSpot"}
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ConnectionBadge({ status, configured, connected }) {
+  if (status.isLoading) return <Badge variant="muted">Checking…</Badge>;
+  if (!configured) return <Badge variant="muted">Not configured</Badge>;
+  if (connected) return <Badge variant="outline">Connected</Badge>;
+  return <Badge variant="muted">Not connected</Badge>;
+}
+
+function Banner({ tone, children }) {
+  const toneClass =
+    tone === "success"
+      ? "border-border bg-secondary/40 text-foreground"
+      : "border-destructive/40 bg-destructive/10 text-destructive";
+  return (
+    <div className={`rounded-md border px-4 py-3 text-sm ${toneClass}`}>{children}</div>
   );
 }
 
