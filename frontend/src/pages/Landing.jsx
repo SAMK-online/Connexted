@@ -19,6 +19,7 @@ import {
 import { Wordmark } from "@/components/Wordmark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import HeroCanvas from "@/components/HeroCanvas";
 import heroImage from "@/assets/connexted-hero.png";
 
 const NAV_LINKS = [
@@ -249,9 +250,13 @@ function SiteNav() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden border-b border-border">
+    <section className="dark relative overflow-hidden border-b border-border bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)]" />
-      <div className="relative mx-auto max-w-[1200px] px-6 py-20 md:py-28">
+      <div className="relative z-10 mx-auto max-w-[1200px] px-6 py-20 md:py-28">
+        <div className="relative mb-14 h-[260px] animate-fade-up md:h-[360px]">
+          <HeroCanvas />
+        </div>
+
         <div className="flex animate-fade-up items-center gap-3">
           <Badge variant="outline" className="gap-1.5 py-1">
             <span className="h-1.5 w-1.5 rounded-full bg-foreground" />

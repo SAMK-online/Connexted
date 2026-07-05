@@ -16,7 +16,7 @@ export default function AppLayout() {
       <aside className="sticky top-0 hidden h-screen flex-col justify-between border-r border-border bg-foreground p-5 text-background lg:flex">
         <div className="flex flex-col gap-8">
           <Link to="/" className="group flex items-center justify-between">
-            <Wordmark className="text-background [&_span]:text-background" />
+            <Wordmark className="rounded-md bg-background px-2 py-1" />
             <ArrowUpRight className="h-4 w-4 text-background/50 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Link>
 
