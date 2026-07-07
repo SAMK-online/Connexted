@@ -13,7 +13,7 @@ import { useEffect, useRef, useCallback } from "react";
   repulsion is wired through a window listener instead.
 */
 
-const PARTICLE_COUNT = 2600;
+const PARTICLE_COUNT = 2000;
 const MORPH_DURATION = 150; // frames to morph between scenes
 const HOLD_DURATION = 120; // frames to hold each scene
 const SCENES = ["card", "neural", "handshake"];
@@ -121,24 +121,26 @@ function neuralScene(count, cx, cy, S) {
   return { points: buildPoints(count, prims), layers };
 }
 
+// A thumbs-up: fist + upright thumb + curled fingers + cuff.
+// side = +1 puts the thumb on the right, -1 mirrors it.
+function thumbsUpPrims(hx, hy, S, side) {
+  return [
+    disc(hx, hy + 0.02 * S, 0.072 * S),
+    capsule(hx + side * 0.045 * S, hy - 0.02 * S, hx + side * 0.045 * S, hy - 0.13 * S, 0.026 * S),
+    capsule(hx - side * 0.06 * S, hy - 0.03 * S, hx + side * 0.01 * S, hy - 0.03 * S, 0.013 * S),
+    capsule(hx - side * 0.06 * S, hy + 0.005 * S, hx + side * 0.01 * S, hy + 0.005 * S, 0.013 * S),
+    capsule(hx - side * 0.06 * S, hy + 0.04 * S, hx + side * 0.01 * S, hy + 0.04 * S, 0.013 * S),
+    rect(hx, hy + 0.1 * S, 0.085 * S, 0.035 * S)
+  ];
+}
+
 function handshakeScene(count, cx, cy, S) {
   const prims = [
-    // forearms come in fairly horizontally from the sides, angling down to cuffs
-    capsule(cx - 0.4 * S, cy + 0.14 * S, cx - 0.07 * S, cy + 0.01 * S, 0.048 * S),
-    capsule(cx + 0.4 * S, cy + 0.14 * S, cx + 0.07 * S, cy + 0.01 * S, 0.048 * S),
-    // dense central clasp (two hands gripping)
-    disc(cx - 0.03 * S, cy, 0.075 * S),
-    disc(cx + 0.04 * S, cy - 0.005 * S, 0.07 * S),
-    disc(cx + 0.005 * S, cy + 0.006 * S, 0.06 * S),
-    // thumbs up
-    capsule(cx - 0.02 * S, cy - 0.03 * S, cx - 0.05 * S, cy - 0.12 * S, 0.022 * S),
-    capsule(cx + 0.03 * S, cy - 0.03 * S, cx + 0.06 * S, cy - 0.11 * S, 0.022 * S),
-    // finger ridges across the grip
-    capsule(cx - 0.06 * S, cy - 0.02 * S, cx + 0.06 * S, cy - 0.03 * S, 0.012 * S),
-    capsule(cx - 0.06 * S, cy + 0.02 * S, cx + 0.06 * S, cy + 0.015 * S, 0.012 * S),
-    // cuffs
-    rect(cx - 0.38 * S, cy + 0.13 * S, 0.06 * S, 0.05 * S),
-    rect(cx + 0.38 * S, cy + 0.13 * S, 0.06 * S, 0.05 * S)
+    ...thumbsUpPrims(cx - 0.28 * S, cy, S, 1),
+    ...thumbsUpPrims(cx + 0.28 * S, cy, S, -1),
+    // checkmark in the middle
+    capsule(cx - 0.1 * S, cy, cx - 0.03 * S, cy + 0.07 * S, 0.022 * S),
+    capsule(cx - 0.03 * S, cy + 0.07 * S, cx + 0.1 * S, cy - 0.09 * S, 0.022 * S)
   ];
   return buildPoints(count, prims);
 }
@@ -146,14 +148,14 @@ function handshakeScene(count, cx, cy, S) {
 function createParticle(startPts) {
   const p = startPts[Math.floor(Math.random() * startPts.length)];
   return {
-    x: p.x + (Math.random() - 0.5) * 24,
-    y: p.y + (Math.random() - 0.5) * 24,
+    x: p.x + (Math.random() - 0.5) * 14,
+    y: p.y + (Math.random() - 0.5) * 14,
     vx: 0,
     vy: 0,
-    size: 0.6 + Math.random() * 1.3,
-    alpha: 0.25 + Math.random() * 0.55,
+    size: 0.5 + Math.random() * 0.9,
+    alpha: 0.6 + Math.random() * 0.4,
     noiseOffset: Math.random() * 1000,
-    brightness: 0.5 + Math.random() * 0.5
+    brightness: 0.78 + Math.random() * 0.22
   };
 }
 
@@ -180,7 +182,9 @@ export default function HeroCanvas() {
     const s = stateRef.current;
     const cx = s.W * 0.5;
     const cy = s.H * 0.5;
-    const S = Math.min(s.W, s.H);
+    // Scale off the abundant width, not the short banner height, so shapes
+    // render large enough that particles stay separated instead of blurring.
+    const S = Math.min(s.W * 0.5, s.H / 0.72);
     const neural = neuralScene(PARTICLE_COUNT, cx, cy, S);
     s.scenes = {
       card: cardScene(PARTICLE_COUNT, cx, cy, S),
@@ -312,8 +316,8 @@ export default function HeroCanvas() {
         const ty = fp.y + (tp.y - fp.y) * eased;
 
         const time = s.frame * 0.002;
-        const nx = Math.sin(time + p.noiseOffset) * 6;
-        const ny = Math.cos(time + p.noiseOffset * 1.3) * 6;
+        const nx = Math.sin(time + p.noiseOffset) * 2;
+        const ny = Math.cos(time + p.noiseOffset * 1.3) * 2;
 
         let mx = 0;
         let my = 0;
@@ -328,7 +332,7 @@ export default function HeroCanvas() {
           }
         }
 
-        const spring = 0.04;
+        const spring = 0.08;
         p.vx += (tx + nx - p.x) * spring + mx * 0.12;
         p.vy += (ty + ny - p.y) * spring + my * 0.12;
         p.vx *= 0.9;

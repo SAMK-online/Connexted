@@ -253,7 +253,7 @@ function Hero() {
     <section className="dark relative overflow-hidden border-b border-border bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)]" />
       <div className="relative z-10 mx-auto max-w-[1200px] px-6 py-20 md:py-28">
-        <div className="relative mb-14 h-[260px] animate-fade-up md:h-[360px]">
+        <div className="relative mb-14 h-[320px] animate-fade-up md:h-[440px]">
           <HeroCanvas />
         </div>
 
