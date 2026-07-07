@@ -1,7 +1,11 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import create_app
+from app.providers import prospeo
+from app.providers.research import enrich_company, enrich_contact
+from app.schemas import CaptureRead, Contact
 
 
 def make_client(monkeypatch) -> TestClient:
@@ -41,6 +45,90 @@ def test_capture_workflow_generates_review_ready_report(monkeypatch):
         agent_response = client.get(f"/api/reports/{capture['id']}/agent-run")
         assert agent_response.status_code == 200
         assert agent_response.json()["status"] == "review_ready"
+
+
+@pytest.mark.asyncio
+async def test_prospeo_enrichment_maps_company_and_contact(monkeypatch):
+    monkeypatch.setenv("MOCK_PROVIDERS", "false")
+    monkeypatch.setenv("PROSPEO_API_KEY", "test-key")
+    get_settings.cache_clear()
+
+    async def fake_company(settings, data):
+        assert settings.prospeo_api_key == "test-key"
+        assert data["company_name"] == "Intercom"
+        return {
+            "error": False,
+            "company": {
+                "name": "Intercom",
+                "website": "https://intercom.com",
+                "description_ai": "Intercom is an AI-first customer service platform.",
+                "industry": "Software Development",
+                "employee_range": "1001-2000",
+                "location": {"city": "San Francisco", "state": "California", "country": "US"},
+                "technology": {"technology_names": ["6sense", "Contentful"]},
+                "job_postings": {
+                    "active_count": 2,
+                    "active_titles": ["Account Executive", "Product Engineer"],
+                },
+                "funding": {
+                    "total_funding_printed": "$125.0M",
+                    "latest_funding_stage": "Series D",
+                    "latest_funding_date": "2018-04-27T00:00:00",
+                },
+            },
+        }
+
+    async def fake_person(settings, data, *, only_verified_email, enrich_mobile):
+        assert only_verified_email is True
+        assert enrich_mobile is False
+        assert data["full_name"] == "Eoghan McCabe"
+        assert data["company_website"] == "intercom.com"
+        return {
+            "error": False,
+            "person": {
+                "full_name": "Eoghan McCabe",
+                "current_job_title": "CEO and co-founder",
+                "linkedin_url": "https://www.linkedin.com/in/eoghanmccabe",
+                "email": {"status": "VERIFIED", "email": "eoghan@example.com"},
+                "mobile": {"status": "NOT_FOUND"},
+                "location": {"city": "San Francisco", "state": "California", "country": "US"},
+            },
+            "company": {
+                "name": "Intercom",
+                "website": "https://intercom.com",
+                "industry": "Software Development",
+            },
+        }
+
+    monkeypatch.setattr(prospeo, "enrich_company", fake_company)
+    monkeypatch.setattr(prospeo, "enrich_person", fake_person)
+
+    capture = CaptureRead(
+        organization_id="demo-org",
+        rep_id="demo-rep",
+        source="web",
+        prospect_name="Eoghan McCabe",
+        company_name="Intercom",
+        raw_text="Met at SaaS event.",
+    )
+    company, company_sources = await enrich_company(capture)
+    contact, company_update, contact_sources = await enrich_contact(
+        capture,
+        Contact(name="Eoghan McCabe"),
+        company,
+    )
+
+    assert company.name == "Intercom"
+    assert company.website == "https://intercom.com"
+    assert company.industry == "Software Development"
+    assert company.confidence == "high"
+    assert company_sources[0].source_type == "prospeo_company"
+    assert "Active job postings" in company_sources[0].snippet
+    assert contact.email == "eoghan@example.com"
+    assert contact.title == "CEO and co-founder"
+    assert contact.linkedin_url == "https://www.linkedin.com/in/eoghanmccabe"
+    assert company_update.name == "Intercom"
+    assert contact_sources[0].source_type == "prospeo_person"
 
 
 def test_capture_dedupe_uses_external_message_context(monkeypatch):

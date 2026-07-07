@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from app.providers.ocr import extract_contact
-from app.providers.research import enrich_company
+from app.providers.research import enrich_company, enrich_contact
 from app.schemas import (
     AgentRunRead,
     AgentStep,
@@ -31,12 +31,20 @@ async def run_capture_workflow(store: AppStore, capture_id: str) -> None:
         playbook = playbooks[0] if playbooks else None
         contact = await _run_step(run, "ocr_contact_extraction", extract_contact(capture))
         company, sources = await _run_step(run, "company_enrichment", enrich_company(capture))
-        signals = _detect_signals(capture, [source.id for source in sources])
+        contact, company_update, contact_sources = await _run_step(
+            run,
+            "contact_enrichment",
+            enrich_contact(capture, contact, company),
+        )
+        if company_update:
+            company = _merge_company(company, company_update)
+        sources.extend(contact_sources)
+        signals = _detect_signals(capture, sources)
         run.steps.append(
             _complete_step(
                 "signal_detection",
-                "Detected GTM signals from conversation notes and placeholder enrichment.",
-                "Signals are conservative because public research providers are not configured.",
+                "Detected GTM signals from conversation notes and enrichment sources.",
+                "Signals stay conservative and preserve source references for review.",
             )
         )
         if playbook:
@@ -65,7 +73,7 @@ async def run_capture_workflow(store: AppStore, capture_id: str) -> None:
             sources=sources,
             signals=signals,
             strategy=strategy,
-            warnings=_warnings(contact.name, company.name),
+            warnings=_warnings(contact.name, company.name, sources),
             confidence=ConfidenceLabel.MEDIUM if contact.name else ConfidenceLabel.LOW,
         )
         report.drafts = _build_drafts(report)
@@ -131,16 +139,32 @@ def _complete_step(name: str, output_summary: str, rationale: str) -> AgentStep:
     )
 
 
-def _detect_signals(capture, source_ids: list[str]) -> list[Signal]:
-    text = f"{capture.raw_text} {capture.notes or ''}".lower()
+def _detect_signals(capture, sources) -> list[Signal]:
+    source_ids = [source.id for source in sources]
+    source_text = " ".join(source.snippet for source in sources if source.snippet)
+    text = f"{capture.raw_text} {capture.notes or ''} {source_text}".lower()
     signals: list[Signal] = []
-    if any(term in text for term in ["hiring", "team", "recruiting", "headcount"]):
+    if any(
+        term in text
+        for term in ["hiring", "team", "recruiting", "headcount", "active job postings"]
+    ):
         signals.append(
             Signal(
                 signal_type="hiring",
                 summary="Conversation notes suggest hiring or team growth.",
                 confidence=ConfidenceLabel.MEDIUM,
                 reasons=["Submitted notes mention hiring/team growth."],
+                source_ids=source_ids,
+                inferred=True,
+            )
+        )
+    if any(term in text for term in ["funding", "series a", "series b", "series c", "series d"]):
+        signals.append(
+            Signal(
+                signal_type="funding",
+                summary="Enrichment suggests recent or relevant funding context.",
+                confidence=ConfidenceLabel.MEDIUM,
+                reasons=["Enrichment source mentions funding context."],
                 source_ids=source_ids,
                 inferred=True,
             )
@@ -207,6 +231,24 @@ def _build_strategy(capture, company_name: str, signals: list[Signal], playbook=
         objections=["Too much automation", "Unclear data accuracy", "Existing CRM workflow already works"],
         confidence=ConfidenceLabel.MEDIUM,
         reasons=reasons,
+    )
+
+
+def _merge_company(current, enriched):
+    if not enriched:
+        return current
+    return current.model_copy(
+        update={
+            "name": enriched.name or current.name,
+            "website": enriched.website or current.website,
+            "industry": enriched.industry or current.industry,
+            "headquarters": enriched.headquarters or current.headquarters,
+            "confidence": enriched.confidence,
+            "confidence_reasons": [
+                *current.confidence_reasons,
+                *enriched.confidence_reasons,
+            ],
+        }
     )
 
 
@@ -286,11 +328,14 @@ def _build_drafts(report: ReportRead) -> list[OutreachDraftRead]:
     ]
 
 
-def _warnings(contact_name: str | None, company_name: str | None) -> list[str]:
+def _warnings(contact_name: str | None, company_name: str | None, sources) -> list[str]:
     warnings = []
     if not contact_name:
         warnings.append("Contact name is missing or low confidence.")
     if not company_name or company_name == "Unknown company":
         warnings.append("Company enrichment is incomplete.")
-    warnings.append("Public enrichment is running in local/mock mode until provider keys are configured.")
+    if not any(source.source_type.startswith("prospeo_") for source in sources):
+        warnings.append(
+            "Public enrichment is running in local/mock mode until provider keys are configured."
+        )
     return warnings

@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-3-5-sonnet-latest"
     tavily_api_key: str | None = None
+    prospeo_api_key: str | None = None
+    prospeo_base_url: str = "https://api.prospeo.io"
+    prospeo_enrich_mobile: bool = False
+    prospeo_only_verified_email: bool = True
     google_application_credentials: str | None = Field(default=None)
 
     hubspot_client_id: str | None = None
