@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const EMPTY_PLAYBOOK = {
   name: "",
@@ -28,6 +29,9 @@ const EMPTY_PLAYBOOK = {
   disqualifiers: "",
   negative_signals: "",
   value_props: "",
+  products_offered: "",
+  target_sectors: "",
+  sector_positioning: "",
   priority_signals: "",
   trusted_sources: "",
   research_resources: "",
@@ -56,6 +60,9 @@ export default function Playbook() {
       disqualifiers: listToText(activePlaybook.disqualifiers),
       negative_signals: listToText(activePlaybook.negative_signals),
       value_props: listToText(activePlaybook.value_props),
+      products_offered: listToText(activePlaybook.products_offered),
+      target_sectors: listToText(activePlaybook.target_sectors),
+      sector_positioning: listToText(activePlaybook.sector_positioning),
       priority_signals: listToText(activePlaybook.priority_signals),
       trusted_sources: listToText(activePlaybook.trusted_sources),
       research_resources: listToText(activePlaybook.research_resources),
@@ -77,6 +84,9 @@ export default function Playbook() {
         disqualifiers: listToText(data.disqualifiers),
         negative_signals: listToText(data.negative_signals),
         value_props: listToText(data.value_props),
+        products_offered: listToText(data.products_offered),
+        target_sectors: listToText(data.target_sectors),
+        sector_positioning: listToText(data.sector_positioning),
         priority_signals: listToText(data.priority_signals),
         trusted_sources: listToText(data.trusted_sources),
         research_resources: listToText(data.research_resources),
@@ -102,6 +112,9 @@ export default function Playbook() {
         disqualifiers: textToList(form.disqualifiers),
         negative_signals: textToList(form.negative_signals),
         value_props: textToList(form.value_props),
+        products_offered: textToList(form.products_offered),
+        target_sectors: textToList(form.target_sectors),
+        sector_positioning: textToList(form.sector_positioning),
         priority_signals: textToList(form.priority_signals),
         trusted_sources: textToList(form.trusted_sources),
         research_resources: textToList(form.research_resources),
@@ -262,6 +275,53 @@ export default function Playbook() {
 
           <Card>
             <CardHeader>
+              <BriefcaseBusiness className="h-5 w-5" />
+              <CardTitle>Products and sector context</CardTitle>
+              <CardDescription>
+                Give reports and project briefs product-specific context for each sector you serve.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-2">
+              <Field label="Products / services" htmlFor="products-offered">
+                <Textarea
+                  id="products-offered"
+                  value={form.products_offered}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, products_offered: event.target.value }))
+                  }
+                  placeholder={
+                    "WhatsApp-first lead capture\nProspect and company enrichment\nHubSpot-approved follow-up"
+                  }
+                />
+              </Field>
+              <Field label="Sectors / verticals" htmlFor="target-sectors">
+                <Textarea
+                  id="target-sectors"
+                  value={form.target_sectors}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, target_sectors: event.target.value }))
+                  }
+                  placeholder={"B2B SaaS\nCybersecurity\nProfessional services"}
+                />
+              </Field>
+              <Field label="Sector-specific product notes" htmlFor="sector-positioning" className="lg:col-span-2">
+                <Textarea
+                  id="sector-positioning"
+                  value={form.sector_positioning}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, sector_positioning: event.target.value }))
+                  }
+                  className="lg:min-h-[150px]"
+                  placeholder={
+                    "Cybersecurity -> prioritize partner event follow-up and compliance-safe proof\nB2B SaaS -> focus speed from conversation to meeting-ready sequence"
+                  }
+                />
+              </Field>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <Sparkles className="h-5 w-5" />
               <CardTitle>Personalization rules</CardTitle>
               <CardDescription>
@@ -353,7 +413,7 @@ export default function Playbook() {
                 <UsageItem icon={Target} label="Qualification" value="ICP, personas, exclusions" />
                 <UsageItem icon={ShieldAlert} label="Source policy" value="Trusted sources, freshness" />
                 <UsageItem icon={FileCheck2} label="Evidence" value="Proof points, resources" />
-                <UsageItem icon={BriefcaseBusiness} label="Positioning" value="Signals, competitors" />
+                <UsageItem icon={BriefcaseBusiness} label="Positioning" value="Products, sectors, competitors" />
               </div>
               <FormFooter
                 disabled={playbooks.isLoading || !activePlaybook || mutation.isPending}
@@ -371,9 +431,9 @@ export default function Playbook() {
   );
 }
 
-function Field({ label, htmlFor, children }) {
+function Field({ label, htmlFor, className, children }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className={cn("flex flex-col gap-1.5", className)}>
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
     </div>
