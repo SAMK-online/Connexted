@@ -232,6 +232,12 @@ def test_admin_settings_update_playbook_and_style_profile(monkeypatch):
                 "disqualifiers": ["students"],
                 "negative_signals": ["No B2B motion"],
                 "value_props": ["Turn booth scans into reviewed follow-up"],
+                "products_offered": ["Event conversation intelligence", "HubSpot sync"],
+                "target_sectors": ["B2B SaaS", "Cybersecurity"],
+                "sector_positioning": [
+                    "Cybersecurity -> emphasize trusted source review before outreach.",
+                    "B2B SaaS -> emphasize speed from event lead to meeting-ready follow-up.",
+                ],
                 "priority_signals": ["event sponsorship", "partner hiring"],
                 "trusted_sources": ["Company website", "Event speaker pages"],
                 "research_resources": [
@@ -254,6 +260,15 @@ def test_admin_settings_update_playbook_and_style_profile(monkeypatch):
         assert updated_playbook.json()["target_personas"] == [
             "VP Sales",
             "Head of Partnerships",
+        ]
+        assert updated_playbook.json()["products_offered"] == [
+            "Event conversation intelligence",
+            "HubSpot sync",
+        ]
+        assert updated_playbook.json()["target_sectors"] == ["B2B SaaS", "Cybersecurity"]
+        assert updated_playbook.json()["sector_positioning"] == [
+            "Cybersecurity -> emphasize trusted source review before outreach.",
+            "B2B SaaS -> emphasize speed from event lead to meeting-ready follow-up.",
         ]
         assert updated_playbook.json()["research_resources"] == [
             "https://example.com/customers",
