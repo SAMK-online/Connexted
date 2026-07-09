@@ -187,6 +187,12 @@ def _playbook_fit_reasons(playbook: Playbook | None) -> list[str]:
     reasons = []
     if playbook.target_personas:
         reasons.append(f"Uses saved target personas: {', '.join(playbook.target_personas[:2])}.")
+    if playbook.products_offered:
+        reasons.append(f"Products/services in scope: {', '.join(playbook.products_offered[:2])}.")
+    if playbook.target_sectors:
+        reasons.append(f"Sector focus: {', '.join(playbook.target_sectors[:2])}.")
+    if playbook.sector_positioning:
+        reasons.append(f"Sector positioning: {playbook.sector_positioning[0]}.")
     if playbook.priority_signals:
         reasons.append(f"Prioritizes signals: {', '.join(playbook.priority_signals[:2])}.")
     if playbook.trusted_sources:

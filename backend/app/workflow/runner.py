@@ -58,7 +58,7 @@ async def run_capture_workflow(store: AppStore, capture_id: str) -> None:
                     _playbook_rationale(playbook),
                 )
             )
-        strategy = _build_strategy(capture, company.name or "the account", signals, playbook)
+        strategy = _build_strategy(capture, company, signals, playbook)
         run.steps.append(
             _complete_step(
                 "pitch_strategy",
@@ -194,18 +194,28 @@ def _detect_signals(capture, sources) -> list[Signal]:
     return signals
 
 
-def _build_strategy(capture, company_name: str, signals: list[Signal], playbook=None) -> PitchStrategy:
+def _build_strategy(capture, company, signals: list[Signal], playbook=None) -> PitchStrategy:
+    company_name = company.name or "the account"
     primary_signal = signals[0].signal_type.replace("_", " ")
-    value_prop = (
-        playbook.value_props[0]
-        if playbook and playbook.value_props
-        else "Turn high-intent event interactions into reviewed, evidence-backed outreach quickly."
+    product_context = _product_context(playbook)
+    sector_context = _sector_context(company, playbook)
+    positioning_note = (
+        playbook.sector_positioning[0] if playbook and playbook.sector_positioning else None
     )
+    value_prop = _strategy_value_prop(playbook, positioning_note)
     reasons = ["Uses submitted conversation context and conservative signal detection."]
     if playbook:
         reasons.append(f"Uses saved playbook: {playbook.name}.")
         if playbook.target_personas:
             reasons.append(f"Targets personas including {', '.join(playbook.target_personas[:3])}.")
+        if playbook.products_offered:
+            reasons.append(
+                f"Products/services in scope: {', '.join(playbook.products_offered[:3])}."
+            )
+        if playbook.target_sectors:
+            reasons.append(f"Sector context includes {', '.join(playbook.target_sectors[:3])}.")
+        if positioning_note:
+            reasons.append(f"Sector-specific positioning: {positioning_note}.")
         if playbook.priority_signals:
             reasons.append(
                 f"Prioritizes signals including {', '.join(playbook.priority_signals[:3])}."
@@ -220,18 +230,62 @@ def _build_strategy(capture, company_name: str, signals: list[Signal], playbook=
             reasons.append(
                 f"Research freshness window: last {playbook.research_freshness_days} days."
             )
+    angle_target = primary_signal
+    if product_context and sector_context:
+        angle_target = f"{product_context} for {sector_context} teams around {primary_signal}"
+    elif product_context:
+        angle_target = f"{product_context} around {primary_signal}"
+    elif sector_context:
+        angle_target = f"{sector_context} motion around {primary_signal}"
     return PitchStrategy(
-        recommended_angle=f"Reference the recent conversation and connect it to {primary_signal}.",
+        recommended_angle=f"Reference the recent conversation and connect it to {angle_target}.",
         next_best_action="Send a concise personalized follow-up and create a HubSpot task after approval.",
         pain_hypothesis=(
-            f"{company_name} may benefit from a faster path from event conversations to qualified follow-up."
+            f"{company_name} may benefit from a more specific path from event conversations "
+            f"to qualified follow-up{_sector_suffix(sector_context)}."
         ),
         value_prop=value_prop,
-        suggested_cta="Ask for a 20-minute follow-up to compare current GTM handoff workflow against the proposed approach.",
+        suggested_cta=(
+            "Ask for a 20-minute follow-up to compare current GTM handoff workflow "
+            "against the proposed approach."
+        ),
         objections=["Too much automation", "Unclear data accuracy", "Existing CRM workflow already works"],
         confidence=ConfidenceLabel.MEDIUM,
         reasons=reasons,
     )
+
+
+def _sector_suffix(sector_context: str | None) -> str:
+    return f" for {sector_context}" if sector_context else ""
+
+
+def _strategy_value_prop(playbook, positioning_note: str | None) -> str:
+    base = (
+        playbook.value_props[0]
+        if playbook and playbook.value_props
+        else "Turn high-intent event interactions into reviewed, evidence-backed outreach quickly."
+    )
+    if positioning_note:
+        return f"{base} Sector context: {positioning_note}"
+    if playbook and playbook.products_offered:
+        return f"{base} Relevant product/service: {playbook.products_offered[0]}."
+    return base
+
+
+def _product_context(playbook) -> str | None:
+    if playbook and playbook.products_offered:
+        return playbook.products_offered[0]
+    return None
+
+
+def _sector_context(company, playbook) -> str | None:
+    if not playbook or not playbook.target_sectors:
+        return None
+    industry = (company.industry or "").lower()
+    for sector in playbook.target_sectors:
+        if industry and (sector.lower() in industry or industry in sector.lower()):
+            return sector
+    return playbook.target_sectors[0]
 
 
 def _merge_company(current, enriched):
@@ -256,6 +310,12 @@ def _playbook_rationale(playbook) -> str:
     parts = []
     if playbook.target_personas:
         parts.append(f"target personas: {', '.join(playbook.target_personas[:3])}")
+    if playbook.products_offered:
+        parts.append(f"products/services: {', '.join(playbook.products_offered[:3])}")
+    if playbook.target_sectors:
+        parts.append(f"target sectors: {', '.join(playbook.target_sectors[:3])}")
+    if playbook.sector_positioning:
+        parts.append(f"sector positioning: {playbook.sector_positioning[0]}")
     if playbook.priority_signals:
         parts.append(f"priority signals: {', '.join(playbook.priority_signals[:3])}")
     if playbook.trusted_sources:
