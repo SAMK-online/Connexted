@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   Building2,
   CalendarDays,
+  ClipboardList,
   FolderOpen,
   Inbox,
   Search,
@@ -95,6 +96,20 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent className="grid gap-2">
+              <div className="mb-2 rounded-lg border border-border bg-secondary/25 p-4">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  <h3 className="font-display text-base font-semibold tracking-tight">
+                    Folder prep
+                  </h3>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{folder.prep.objective}</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <PrepColumn title="Cover" items={folder.prep.cover} />
+                  <PrepColumn title="Ask" items={folder.prep.ask} />
+                  <PrepColumn title="Prioritize" items={folder.prep.prioritize} />
+                </div>
+              </div>
               {folder.people.map((capture) => (
                 <Link
                   key={capture.id}
@@ -197,11 +212,30 @@ function groupByEvent(captures, query) {
         ...folder,
         companyCount: companies.size,
         latest,
+        prep: buildFolderPrep(folder.name, folder.people, companies),
         reviewReady: folder.people.filter((capture) => capture.status === "review_ready").length,
         openCount: folder.people.filter((capture) => capture.status !== "review_ready").length
       };
     })
     .sort((a, b) => b.latest - a.latest);
+}
+
+function PrepColumn({ title, items }) {
+  return (
+    <div>
+      <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">
+        {title}
+      </p>
+      <ul className="mt-2 space-y-1.5 text-sm">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2 text-muted-foreground">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/70" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function buildStats(captures) {
@@ -212,6 +246,34 @@ function buildStats(captures) {
     people: captures.length,
     companies: companies.size,
     reviewReady: captures.filter((capture) => capture.status === "review_ready").length
+  };
+}
+
+function buildFolderPrep(name, people, companies) {
+  const reviewReady = people.filter((capture) => capture.status === "review_ready").length;
+  const open = people.length - reviewReady;
+  const companyList = [...companies].slice(0, 3);
+  const priorityPeople = people
+    .filter((capture) => capture.status === "review_ready")
+    .concat(people.filter((capture) => capture.status !== "review_ready"))
+    .slice(0, 3)
+    .map((capture) => capture.prospect_name || capture.company_name || "Unknown prospect");
+
+  return {
+    objective: `Prepare for ${name} with ${people.length} captured ${
+      people.length === 1 ? "person" : "people"
+    }, ${reviewReady} review-ready follow-up${open ? `, and ${open} still open` : ""}.`,
+    cover: [
+      "Start with the event context before product value.",
+      "Cluster similar company pains before writing follow-up.",
+      "Use approved reports as the source of truth."
+    ],
+    ask: [
+      "What was the strongest signal from this event?",
+      "Who needs a same-week follow-up?",
+      "Which conversations need more research before outreach?"
+    ],
+    prioritize: priorityPeople.length ? priorityPeople : companyList.length ? companyList : ["No people yet"]
   };
 }
 

@@ -42,6 +42,8 @@ def test_capture_workflow_generates_review_ready_report(monkeypatch):
         assert report["contact"]["email"] == "ada@example.com"
         assert report["company"]["name"] == "Analytical Engines Inc."
         assert report["signals"][0]["signal_type"] == "partnerships"
+        assert "AI Operators Summit" in report["meeting_prep"]["agenda"][0]
+        assert report["meeting_prep"]["discovery_questions"]
         assert len(report["drafts"]) == 4
 
         agent_response = client.get(f"/api/reports/{capture['id']}/agent-run")

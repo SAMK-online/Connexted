@@ -9,6 +9,7 @@ from app.schemas import (
     DraftChannel,
     DraftRegenerateRequest,
     DraftType,
+    MeetingPrepBrief,
     OutreachDraftRead,
     PitchStrategy,
     ReportRead,
@@ -59,11 +60,12 @@ async def run_capture_workflow(store: AppStore, capture_id: str) -> None:
                 )
             )
         strategy = _build_strategy(capture, company, signals, playbook)
+        meeting_prep = _build_meeting_prep(capture, contact, company, signals, strategy, playbook)
         run.steps.append(
             _complete_step(
                 "pitch_strategy",
-                "Generated recommended angle, value prop, CTA, and objections.",
-                "Strategy uses submitted notes, saved playbook context, and signal confidence.",
+                "Generated recommended angle, meeting prep, value prop, CTA, and objections.",
+                "Strategy and prep use submitted notes, saved playbook context, and signal confidence.",
             )
         )
         report = ReportRead(
@@ -73,6 +75,7 @@ async def run_capture_workflow(store: AppStore, capture_id: str) -> None:
             sources=sources,
             signals=signals,
             strategy=strategy,
+            meeting_prep=meeting_prep,
             warnings=_warnings(contact.name, company.name, sources),
             confidence=ConfidenceLabel.MEDIUM if contact.name else ConfidenceLabel.LOW,
         )
@@ -215,7 +218,7 @@ def _build_strategy(capture, company, signals: list[Signal], playbook=None) -> P
         if playbook.target_sectors:
             reasons.append(f"Sector context includes {', '.join(playbook.target_sectors[:3])}.")
         if positioning_note:
-            reasons.append(f"Sector-specific positioning: {positioning_note}.")
+            reasons.append(f"Sector-specific positioning: {_with_period(positioning_note)}")
         if playbook.priority_signals:
             reasons.append(
                 f"Prioritizes signals including {', '.join(playbook.priority_signals[:3])}."
@@ -259,6 +262,80 @@ def _sector_suffix(sector_context: str | None) -> str:
     return f" for {sector_context}" if sector_context else ""
 
 
+def _possessive(value: str) -> str:
+    return f"{value}'" if value.endswith("s") else f"{value}'s"
+
+
+def _build_meeting_prep(capture, contact, company, signals, strategy, playbook=None) -> MeetingPrepBrief:
+    contact_name = contact.name or "the prospect"
+    company_name = company.name or "their team"
+    company_possessive = _possessive(company_name)
+    event_context = capture.event_name or "the recent event"
+    primary_signal = signals[0].signal_type.replace("_", " ") if signals else "follow-up"
+    product = _product_context(playbook) or "CONNEXTed"
+    sector = _sector_context(company, playbook)
+    proof_point = playbook.proof_points[0] if playbook and playbook.proof_points else None
+    personalization_rule = (
+        playbook.personalization_rules[0] if playbook and playbook.personalization_rules else None
+    )
+
+    talking_points = [
+        f"Open with the context from {event_context} before pitching.",
+        f"Connect {company_possessive} current motion to {primary_signal}.",
+        f"Position {product} as the practical next step.",
+        strategy.value_prop,
+    ]
+    if sector:
+        talking_points.append(f"Frame the discussion for the {sector} use case.")
+    if proof_point:
+        talking_points.append(f"Use proof point: {proof_point}.")
+
+    agenda = [
+        f"Confirm what {contact_name} cared about at {event_context}.",
+        f"Map {company_possessive} current handoff from event conversation to CRM follow-up.",
+        "Compare where context is lost, delayed, or manually recreated.",
+        f"Agree on the next step: {strategy.suggested_cta}",
+    ]
+
+    discovery_questions = [
+        "What happens internally after a promising event conversation today?",
+        "Which teams need to see the context before follow-up is approved?",
+        "Where do leads usually lose momentum after the event?",
+        "What signal would make this account worth prioritizing this week?",
+    ]
+    if sector:
+        discovery_questions.append(f"What is different about this workflow in your {sector} motion?")
+
+    avoid = [
+        "Do not imply unverified claims are confirmed facts.",
+        "Do not over-automate the relationship moment; keep review and approval explicit.",
+    ]
+    if personalization_rule:
+        avoid.append(f"Respect playbook rule: {_with_period(personalization_rule)}")
+
+    return MeetingPrepBrief(
+        objective=(
+            f"Use the meeting with {contact_name} to validate whether {company_name} has an urgent "
+            f"{primary_signal} follow-up problem and align on a concrete next step."
+        ),
+        agenda=agenda,
+        talking_points=talking_points,
+        discovery_questions=discovery_questions,
+        avoid=avoid,
+        likely_objections=strategy.objections,
+        follow_up_plan=[
+            "Send a concise recap tied to the original event conversation.",
+            "Attach or paste the reviewed outreach angle before CRM sync.",
+            "Create a HubSpot task only after approval.",
+        ],
+        crm_notes=[
+            f"Meeting context: {event_context}.",
+            f"Recommended angle: {strategy.recommended_angle}",
+            f"Suggested CTA: {strategy.suggested_cta}",
+        ],
+    )
+
+
 def _strategy_value_prop(playbook, positioning_note: str | None) -> str:
     base = (
         playbook.value_props[0]
@@ -266,10 +343,17 @@ def _strategy_value_prop(playbook, positioning_note: str | None) -> str:
         else "Turn high-intent event interactions into reviewed, evidence-backed outreach quickly."
     )
     if positioning_note:
-        return f"{base} Sector context: {positioning_note}"
+        return f"{_with_period(base)} Sector context: {_with_period(positioning_note)}"
     if playbook and playbook.products_offered:
         return f"{base} Relevant product/service: {playbook.products_offered[0]}."
     return base
+
+
+def _with_period(value: str) -> str:
+    stripped = value.strip()
+    if not stripped:
+        return stripped
+    return stripped if stripped.endswith((".", "!", "?")) else f"{stripped}."
 
 
 def _product_context(playbook) -> str | None:
@@ -366,7 +450,7 @@ def _build_drafts(report: ReportRead) -> list[OutreachDraftRead]:
             draft_type=DraftType.LINKEDIN_FOLLOW_UP,
             body=(
                 f"Thanks for connecting, {name}. The thread I wanted to continue: "
-                f"{report.strategy.value_prop}."
+                f"{_with_period(report.strategy.value_prop)}"
             ),
             inferred_claims_used=False,
         ),

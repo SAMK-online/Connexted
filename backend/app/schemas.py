@@ -129,6 +129,17 @@ class PitchStrategy(BaseModel):
     reasons: list[str] = Field(default_factory=list)
 
 
+class MeetingPrepBrief(BaseModel):
+    objective: str
+    agenda: list[str] = Field(default_factory=list)
+    talking_points: list[str] = Field(default_factory=list)
+    discovery_questions: list[str] = Field(default_factory=list)
+    avoid: list[str] = Field(default_factory=list)
+    likely_objections: list[str] = Field(default_factory=list)
+    follow_up_plan: list[str] = Field(default_factory=list)
+    crm_notes: list[str] = Field(default_factory=list)
+
+
 class OutreachDraftRead(BaseModel):
     id: str = Field(default_factory=lambda: new_id("draft"))
     capture_id: str
@@ -163,6 +174,7 @@ class ReportRead(BaseModel):
     sources: list[SourceEvidence] = Field(default_factory=list)
     signals: list[Signal] = Field(default_factory=list)
     strategy: PitchStrategy
+    meeting_prep: MeetingPrepBrief
     drafts: list[OutreachDraftRead] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     confidence: ConfidenceLabel = ConfidenceLabel.MEDIUM

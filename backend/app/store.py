@@ -879,6 +879,7 @@ class PostgresStore:
                           contact_snapshot,
                           company_snapshot,
                           strategy,
+                          meeting_prep,
                           warnings,
                           confidence
                         )
@@ -888,6 +889,7 @@ class PostgresStore:
                           cast(:contact_snapshot as jsonb),
                           cast(:company_snapshot as jsonb),
                           cast(:strategy as jsonb),
+                          cast(:meeting_prep as jsonb),
                           cast(:warnings as jsonb),
                           :confidence
                         )
@@ -900,6 +902,7 @@ class PostgresStore:
                         "contact_snapshot": _json(report.contact.model_dump(mode="json")),
                         "company_snapshot": _json(report.company.model_dump(mode="json")),
                         "strategy": _json(report.strategy.model_dump(mode="json")),
+                        "meeting_prep": _json(report.meeting_prep.model_dump(mode="json")),
                         "warnings": _json(report.warnings),
                         "confidence": report.confidence.value,
                     },
@@ -2245,6 +2248,7 @@ def _report_from_row(
         sources=sources,
         signals=signals,
         strategy=_parse_json(row["strategy"], {}),
+        meeting_prep=_parse_json(row["meeting_prep"], {}),
         drafts=drafts,
         warnings=_parse_json(row["warnings"], []),
         confidence=row["confidence"],

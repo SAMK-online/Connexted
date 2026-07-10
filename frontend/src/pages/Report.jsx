@@ -9,13 +9,17 @@ import {
   Check,
   X,
   Share2,
-  Activity
+  Activity,
+  ClipboardList,
+  MessageSquareText,
+  CircleHelp,
+  Ban,
+  ListChecks
 } from "lucide-react";
 import { createReview, getAgentRun, getReport, regenerateDraft, syncHubSpot } from "../lib/api.js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 const CONFIDENCE_STYLES = {
@@ -141,6 +145,63 @@ export default function Report() {
               ))}
             </div>
           ) : null}
+        </CardContent>
+      </Card>
+
+      {/* Meeting prep */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" /> Meeting prep brief
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-5 pt-0">
+          <div className="rounded-lg border border-border bg-secondary/25 p-5">
+            <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">
+              Objective
+            </p>
+            <p className="mt-2 text-sm leading-relaxed">
+              {data.meeting_prep?.objective || data.strategy.next_best_action}
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <PrepList
+              icon={ListChecks}
+              title="Agenda"
+              items={data.meeting_prep?.agenda}
+              fallback={["Confirm context", "Validate fit", "Agree on next step"]}
+            />
+            <PrepList
+              icon={MessageSquareText}
+              title="Talking points"
+              items={data.meeting_prep?.talking_points}
+              fallback={[data.strategy.value_prop]}
+            />
+            <PrepList
+              icon={CircleHelp}
+              title="Questions to ask"
+              items={data.meeting_prep?.discovery_questions}
+              fallback={["What happens after a promising event conversation today?"]}
+            />
+            <PrepList
+              icon={Ban}
+              title="Avoid"
+              items={data.meeting_prep?.avoid}
+              fallback={["Do not use unverified claims as confirmed facts."]}
+            />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <PrepList
+              title="Likely objections"
+              items={data.meeting_prep?.likely_objections}
+              fallback={data.strategy.objections}
+            />
+            <PrepList
+              title="Follow-up plan"
+              items={data.meeting_prep?.follow_up_plan}
+              fallback={["Send recap", "Confirm CTA", "Sync approved notes to HubSpot"]}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -365,5 +426,25 @@ export default function Report() {
         </CardContent>
       </Card>
     </section>
+  );
+}
+
+function PrepList({ icon: Icon, title, items, fallback = [] }) {
+  const list = items?.length ? items : fallback;
+  return (
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="flex items-center gap-2">
+        {Icon ? <Icon className="h-4 w-4" /> : null}
+        <h3 className="font-display text-base font-semibold tracking-tight">{title}</h3>
+      </div>
+      <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+        {list.map((item) => (
+          <li key={item} className="flex gap-2">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/70" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
