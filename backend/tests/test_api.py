@@ -25,6 +25,7 @@ def test_capture_workflow_generates_review_ready_report(monkeypatch):
                 "source": "web",
                 "prospect_name": "Ada Lovelace",
                 "company_name": "Analytical Engines Inc.",
+                "event_name": "AI Operators Summit",
                 "raw_text": "Ada Lovelace\nada@example.com\n+1 555 123 4567",
                 "notes": "Discussed partnership motion and event follow-up.",
             },
@@ -32,6 +33,7 @@ def test_capture_workflow_generates_review_ready_report(monkeypatch):
 
         assert response.status_code == 200
         capture = response.json()
+        assert capture["event_name"] == "AI Operators Summit"
 
         report_response = client.get(f"/api/reports/{capture['id']}")
         assert report_response.status_code == 200
@@ -149,6 +151,43 @@ def test_capture_dedupe_uses_external_message_context(monkeypatch):
         assert second.json()["was_deduplicated"] is True
         assert first.json()["id"] == second.json()["id"]
         assert len(client.get("/api/captures").json()) == 1
+
+
+def test_capture_event_name_groups_repeat_people_by_event(monkeypatch):
+    with make_client(monkeypatch) as client:
+        first = client.post(
+            "/api/captures",
+            json={
+                "organization_id": "demo-org",
+                "rep_id": "demo-rep",
+                "source": "web",
+                "raw_text": "Same person",
+                "prospect_name": "Rene Event",
+                "company_name": "Folder Co.",
+                "event_name": "SaaStr dinner",
+            },
+        )
+        second = client.post(
+            "/api/captures",
+            json={
+                "organization_id": "demo-org",
+                "rep_id": "demo-rep",
+                "source": "web",
+                "raw_text": "Same person",
+                "prospect_name": "Rene Event",
+                "company_name": "Folder Co.",
+                "event_name": "Dreamforce breakfast",
+            },
+        )
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert first.json()["id"] != second.json()["id"]
+        captures = client.get("/api/captures").json()
+        assert {capture["event_name"] for capture in captures} == {
+            "SaaStr dinner",
+            "Dreamforce breakfast",
+        }
 
 
 def test_crm_sync_requires_explicit_review_approval(monkeypatch):

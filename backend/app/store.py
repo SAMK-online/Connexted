@@ -463,6 +463,7 @@ class PostgresStore:
                           raw_text,
                           prospect_name,
                           company_name,
+                          event_name,
                           notes,
                           external_message_id,
                           dedupe_key
@@ -475,6 +476,7 @@ class PostgresStore:
                           :raw_text,
                           :prospect_name,
                           :company_name,
+                          :event_name,
                           :notes,
                           :external_message_id,
                           :dedupe_key
@@ -489,6 +491,7 @@ class PostgresStore:
                         "raw_text": payload.raw_text,
                         "prospect_name": payload.prospect_name,
                         "company_name": payload.company_name,
+                        "event_name": payload.event_name,
                         "notes": payload.notes,
                         "external_message_id": payload.external_message_id,
                         "dedupe_key": dedupe_key,
@@ -1827,6 +1830,7 @@ class PostgresStore:
             raw_text=row["raw_text"] or "",
             prospect_name=row["prospect_name"],
             company_name=row["company_name"],
+            event_name=row["event_name"],
             notes=row["notes"],
             external_message_id=row["external_message_id"],
             media_urls=[asset["media_url"] for asset in assets if asset["media_url"]],
@@ -2104,6 +2108,7 @@ def _capture_dedupe_key(payload: CaptureCreate) -> str:
         [
             payload.organization_id,
             payload.external_message_id or "",
+            payload.event_name.strip().lower() if payload.event_name else "",
             payload.raw_text.strip().lower(),
             ",".join(payload.media_urls),
         ]

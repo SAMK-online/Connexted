@@ -61,6 +61,7 @@ class CaptureCreate(BaseModel):
     raw_text: str = ""
     prospect_name: str | None = None
     company_name: str | None = None
+    event_name: str | None = None
     notes: str | None = None
     external_message_id: str | None = None
     media_urls: list[str] = Field(default_factory=list)

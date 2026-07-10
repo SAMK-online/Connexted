@@ -1,10 +1,19 @@
 import { NavLink, Outlet, Link } from "react-router-dom";
-import { BookOpen, Radar, Inbox, Settings2, ArrowUpRight, MessageSquareText } from "lucide-react";
+import {
+  BookOpen,
+  FolderOpen,
+  Radar,
+  Inbox,
+  Settings2,
+  ArrowUpRight,
+  MessageSquareText
+} from "lucide-react";
 import { Wordmark } from "@/components/Wordmark";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/app", label: "Captures", icon: Inbox, end: true },
+  { to: "/app/dashboard", label: "Dashboard", icon: FolderOpen, end: false },
   { to: "/app/events", label: "Event Radar", icon: Radar, end: false },
   { to: "/app/playbook", label: "Playbook", icon: BookOpen, end: false },
   { to: "/app/settings", label: "Settings", icon: Settings2, end: false }

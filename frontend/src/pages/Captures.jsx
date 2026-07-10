@@ -49,6 +49,7 @@ export default function Captures() {
       raw_text: form.get("raw_text"),
       prospect_name: form.get("prospect_name"),
       company_name: form.get("company_name"),
+      event_name: form.get("event_name"),
       notes: form.get("notes")
     });
     event.currentTarget.reset();
@@ -84,6 +85,10 @@ export default function Captures() {
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="company_name">Company</Label>
             <Input id="company_name" name="company_name" placeholder="Analytical Engines Inc." />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="event_name">Event / folder</Label>
+            <Input id="event_name" name="event_name" placeholder="SaaStr Annual dinner" />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="raw_text">WhatsApp / card text</Label>
@@ -125,6 +130,9 @@ export default function Captures() {
                 </h3>
                 <p className="mt-0.5 truncate text-sm text-muted-foreground">
                   {capture.company_name || "Company pending"}
+                </p>
+                <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
+                  {capture.event_name || "Unassigned event"}
                 </p>
                 {capture.warnings?.length ? (
                   <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
