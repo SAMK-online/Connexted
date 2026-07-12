@@ -265,9 +265,13 @@ def test_social_intent_discovery_converts_candidate_to_capture(monkeypatch):
             json={
                 "organization_id": "demo-org",
                 "rep_id": "demo-rep",
+                "platforms": ["manual_import"],
                 "event_name": "AI Operators Dinner",
                 "hashtags": ["#AIOperators"],
                 "keywords": ["dinner", "partnerships"],
+                "post_links": [
+                    "https://www.linkedin.com/posts/maya-ai-operators-dinner"
+                ],
                 "pasted_posts": (
                     "@maya Heading to AI Operators Dinner and looking for dinner meetings "
                     "with partnership-led GTM teams. https://x.com/maya/status/1"
@@ -279,9 +283,13 @@ def test_social_intent_discovery_converts_candidate_to_capture(monkeypatch):
         assert discovery.status_code == 200
         body = discovery.json()
         assert body["candidates"]
-        candidate = body["candidates"][0]
+        candidate = next(
+            item for item in body["candidates"] if item["classification"] == "public_post_link"
+        )
         assert candidate["event_name"] == "AI Operators Dinner"
-        assert candidate["classification"] == "meeting_intent"
+        assert candidate["platform"] == "linkedin"
+        assert candidate["post_url"] == "https://www.linkedin.com/posts/maya-ai-operators-dinner"
+        assert any(item["classification"] == "meeting_intent" for item in body["candidates"])
 
         listed = client.get("/api/social/candidates?event_name=AI%20Operators%20Dinner")
         assert listed.status_code == 200
@@ -295,7 +303,7 @@ def test_social_intent_discovery_converts_candidate_to_capture(monkeypatch):
         capture = converted.json()
         assert capture["source"] == "social_intent"
         assert capture["event_name"] == "AI Operators Dinner"
-        assert "Public" in capture["raw_text"]
+        assert "Public linkedin post" in capture["raw_text"]
 
         updated_candidates = client.get(
             "/api/social/candidates?event_name=AI%20Operators%20Dinner"

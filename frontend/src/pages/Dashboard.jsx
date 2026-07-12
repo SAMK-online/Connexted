@@ -238,11 +238,12 @@ function SocialIntentPanel({ folder, candidates, isLoading, queryClient }) {
       organization_id: "demo-org",
       rep_id: "demo-rep",
       event_name: folder.name,
-      platforms: ["x"],
+      platforms: ["manual_import"],
+      post_links: splitList(form.get("post_links")),
       hashtags: splitList(form.get("hashtags")),
       keywords: splitList(form.get("keywords")),
-      organizer_handles: splitList(form.get("organizer_handles")),
-      sponsor_names: splitList(form.get("sponsor_names")),
+      organizer_handles: [],
+      sponsor_names: [],
       pasted_posts: String(form.get("pasted_posts") || ""),
       max_posts: 10
     });
@@ -272,12 +273,19 @@ function SocialIntentPanel({ folder, candidates, isLoading, queryClient }) {
           size="sm"
           onClick={() => setIsOpen((value) => !value)}
         >
-          {isOpen ? "Close search" : "Find visitors"}
+          {isOpen ? "Close import" : "Import links"}
         </Button>
       </div>
 
       {isOpen ? (
         <form onSubmit={onSubmit} className="mt-4 grid gap-3">
+          <Field label="Public post links" htmlFor={`${fieldPrefix}-links`}>
+            <Textarea
+              id={`${fieldPrefix}-links`}
+              name="post_links"
+              placeholder="https://www.linkedin.com/posts/..."
+            />
+          </Field>
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Hashtags" htmlFor={`${fieldPrefix}-hashtags`}>
               <Input
@@ -293,26 +301,12 @@ function SocialIntentPanel({ folder, candidates, isLoading, queryClient }) {
                 placeholder="attending, dinner, partnerships"
               />
             </Field>
-            <Field label="Organizer handles" htmlFor={`${fieldPrefix}-handles`}>
-              <Input
-                id={`${fieldPrefix}-handles`}
-                name="organizer_handles"
-                placeholder="@eventhandle"
-              />
-            </Field>
-            <Field label="Sponsors" htmlFor={`${fieldPrefix}-sponsors`}>
-              <Input
-                id={`${fieldPrefix}-sponsors`}
-                name="sponsor_names"
-                placeholder="HubSpot, Salesforce"
-              />
-            </Field>
           </div>
-          <Field label="Public posts or links" htmlFor={`${fieldPrefix}-posts`}>
+          <Field label="Optional post text or context" htmlFor={`${fieldPrefix}-posts`}>
             <Textarea
               id={`${fieldPrefix}-posts`}
               name="pasted_posts"
-              placeholder="Paste LinkedIn, X, or Instagram post text/URLs when an API is not available."
+              placeholder="Visible post text, speaker notes, or meeting intent from the source post."
             />
           </Field>
           {discover.isError ? (
@@ -323,12 +317,12 @@ function SocialIntentPanel({ folder, candidates, isLoading, queryClient }) {
               {discover.isPending ? (
                 <>
                   <RefreshCw className="h-4 w-4 animate-spin" />
-                  Searching
+                  Importing
                 </>
               ) : (
                 <>
-                  <Search className="h-4 w-4" />
-                  Search social posts
+                  <Plus className="h-4 w-4" />
+                  Import links
                 </>
               )}
             </Button>

@@ -376,6 +376,7 @@ class SocialIntentDiscoveryRequest(BaseModel):
     location: str | None = None
     date_start: date | None = None
     date_end: date | None = None
+    post_links: list[str] = Field(default_factory=list)
     pasted_posts: str = ""
     max_posts: int = Field(default=10, ge=1, le=50)
 

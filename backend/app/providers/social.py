@@ -40,14 +40,15 @@ async def discover_social_intent(
     warnings: list[str] = []
     candidates = _manual_candidates(payload, discovery_id, query, playbook)
     wants_x = any(platform.lower() in {"x", "twitter"} for platform in payload.platforms)
+    wants_x_discovery = wants_x and _has_x_search_inputs(payload)
 
-    if wants_x and not settings.mock_providers and settings.x_bearer_token:
+    if wants_x_discovery and not settings.mock_providers and settings.x_bearer_token:
         try:
             candidates.extend(await _x_recent_search(payload, discovery_id, query, settings, playbook))
         except SocialProviderError as exc:
             warnings.append(f"X search failed ({exc.code}); showing sample candidates instead.")
             candidates.extend(_mock_candidates(payload, discovery_id, query, playbook))
-    elif wants_x:
+    elif wants_x_discovery:
         warnings.append(
             "Social Intent Radar is using sample posts until X_BEARER_TOKEN is configured "
             "and MOCK_PROVIDERS=false."
@@ -222,9 +223,33 @@ def _manual_candidates(
     query: str,
     playbook: Playbook | None,
 ) -> list[SocialPostCandidate]:
+    links = _normalized_links(payload.post_links)
     chunks = _pasted_post_chunks(payload.pasted_posts)
     candidates = []
+    for link in links[: payload.max_posts]:
+        candidates.append(
+            _candidate_from_link(
+                payload=payload,
+                discovery_id=discovery_id,
+                url=link,
+                source_query=query,
+                playbook=playbook,
+            )
+        )
     for chunk in chunks[: payload.max_posts]:
+        urls = _normalized_links(_urls_from_text(chunk))
+        if _is_link_only_chunk(chunk) and urls:
+            for url in urls:
+                candidates.append(
+                    _candidate_from_link(
+                        payload=payload,
+                        discovery_id=discovery_id,
+                        url=url,
+                        source_query=query,
+                        playbook=playbook,
+                    )
+                )
+            continue
         platform = _platform_from_text(chunk)
         handle = _handle_from_text(chunk)
         candidates.append(
@@ -243,6 +268,47 @@ def _manual_candidates(
             )
         )
     return candidates
+
+
+def _candidate_from_link(
+    *,
+    payload: SocialIntentDiscoveryRequest,
+    discovery_id: str,
+    url: str,
+    source_query: str | None,
+    playbook: Playbook | None,
+) -> SocialPostCandidate:
+    platform = _platform_from_text(url)
+    product = (
+        playbook.products_offered[0]
+        if playbook and playbook.products_offered
+        else "CONNEXTed's event intelligence workflow"
+    )
+    return SocialPostCandidate(
+        organization_id=payload.organization_id,
+        discovery_id=discovery_id,
+        event_name=payload.event_name,
+        platform=platform,
+        author_name="Public post link",
+        post_text=(
+            f"User-provided public {platform} post link for {payload.event_name}. "
+            "Open the source URL to verify the author, post text, and event relevance."
+        ),
+        post_url=url,
+        evidence=["User provided a public post URL.", "Post content was not scraped."],
+        classification="public_post_link",
+        confidence=ConfidenceLabel.LOW,
+        relevance_reason=(
+            f"The user attached this public {platform} link to the {payload.event_name} "
+            "event folder for review."
+        ),
+        suggested_angle=(
+            f"Open the source post, confirm event intent, then reference the public post "
+            f"before connecting the conversation to {product}."
+        ),
+        source_query=source_query,
+        inferred=True,
+    )
 
 
 def _candidate_from_post(
@@ -382,6 +448,19 @@ def _dedupe_candidates(candidates: list[SocialPostCandidate]) -> list[SocialPost
     return deduped
 
 
+def _has_x_search_inputs(payload: SocialIntentDiscoveryRequest) -> bool:
+    return any(
+        [
+            payload.hashtags,
+            payload.keywords,
+            payload.organizer_handles,
+            payload.sponsor_names,
+            payload.date_start,
+            payload.date_end,
+        ]
+    )
+
+
 def _pasted_post_chunks(value: str) -> list[str]:
     text = value.strip()
     if not text:
@@ -390,6 +469,26 @@ def _pasted_post_chunks(value: str) -> list[str]:
     if len(chunks) == 1:
         chunks = [line.strip() for line in text.splitlines() if line.strip()]
     return chunks
+
+
+def _normalized_links(values: list[str]) -> list[str]:
+    links = []
+    for value in values:
+        for url in _urls_from_text(value):
+            normalized = url.rstrip(".,)")
+            if normalized.startswith(("http://", "https://")):
+                links.append(normalized)
+    return links
+
+
+def _urls_from_text(value: str) -> list[str]:
+    return re.findall(r"https?://[^\s)]+", value)
+
+
+def _is_link_only_chunk(value: str) -> bool:
+    stripped = value.strip()
+    without_urls = re.sub(r"https?://[^\s)]+", "", stripped).strip()
+    return bool(stripped and not without_urls)
 
 
 def _platform_from_text(value: str) -> str:

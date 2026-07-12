@@ -11,6 +11,7 @@ create table public.social_intent_discoveries (
   location text,
   date_start date,
   date_end date,
+  post_links jsonb not null default '[]',
   pasted_posts text not null default '',
   max_posts integer not null default 10,
   status text not null default 'completed',
