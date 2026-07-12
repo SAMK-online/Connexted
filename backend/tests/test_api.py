@@ -258,6 +258,57 @@ def test_event_discovery_persists_recommendations(monkeypatch):
         assert len(events.json()) == 2
 
 
+def test_social_intent_discovery_converts_candidate_to_capture(monkeypatch):
+    with make_client(monkeypatch) as client:
+        discovery = client.post(
+            "/api/social/discover",
+            json={
+                "organization_id": "demo-org",
+                "rep_id": "demo-rep",
+                "event_name": "AI Operators Dinner",
+                "hashtags": ["#AIOperators"],
+                "keywords": ["dinner", "partnerships"],
+                "pasted_posts": (
+                    "@maya Heading to AI Operators Dinner and looking for dinner meetings "
+                    "with partnership-led GTM teams. https://x.com/maya/status/1"
+                ),
+                "max_posts": 5,
+            },
+        )
+
+        assert discovery.status_code == 200
+        body = discovery.json()
+        assert body["candidates"]
+        candidate = body["candidates"][0]
+        assert candidate["event_name"] == "AI Operators Dinner"
+        assert candidate["classification"] == "meeting_intent"
+
+        listed = client.get("/api/social/candidates?event_name=AI%20Operators%20Dinner")
+        assert listed.status_code == 200
+        assert any(item["id"] == candidate["id"] for item in listed.json())
+
+        converted = client.post(
+            f"/api/social/candidates/{candidate['id']}/convert",
+            json={"rep_id": "demo-rep"},
+        )
+        assert converted.status_code == 200
+        capture = converted.json()
+        assert capture["source"] == "social_intent"
+        assert capture["event_name"] == "AI Operators Dinner"
+        assert "Public" in capture["raw_text"]
+
+        updated_candidates = client.get(
+            "/api/social/candidates?event_name=AI%20Operators%20Dinner"
+        ).json()
+        updated_candidate = next(item for item in updated_candidates if item["id"] == candidate["id"])
+        assert updated_candidate["status"] == "converted"
+        assert updated_candidate["converted_capture_id"] == capture["id"]
+
+        report = client.get(f"/api/reports/{capture['id']}")
+        assert report.status_code == 200
+        assert report.json()["meeting_prep"]["agenda"]
+
+
 def test_admin_settings_update_playbook_and_style_profile(monkeypatch):
     with make_client(monkeypatch) as client:
         playbooks = client.get("/api/admin/playbooks")

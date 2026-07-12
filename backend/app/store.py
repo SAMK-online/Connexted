@@ -32,15 +32,17 @@ from app.schemas import (
     OutreachDraftUpdate,
     Playbook,
     PlaybookUpsert,
-    new_id,
     ReportRead,
     ReviewAction,
     ReviewDecisionCreate,
     ReviewDecisionRead,
     Signal,
+    SocialIntentDiscoveryRead,
+    SocialPostCandidate,
     SourceEvidence,
     StyleProfile,
     StyleProfileUpsert,
+    new_id,
 )
 
 
@@ -142,6 +144,20 @@ class AppStore(Protocol):
 
     async def get_event(self, event_id: str) -> IndustryEventRead | None: ...
 
+    async def save_social_discovery(
+        self, discovery: SocialIntentDiscoveryRead
+    ) -> SocialIntentDiscoveryRead: ...
+
+    async def list_social_candidates(
+        self, event_name: str | None = None
+    ) -> list[SocialPostCandidate]: ...
+
+    async def get_social_candidate(self, candidate_id: str) -> SocialPostCandidate | None: ...
+
+    async def mark_social_candidate_converted(
+        self, candidate_id: str, capture_id: str
+    ) -> None: ...
+
     async def list_playbooks(self) -> list[Playbook]: ...
 
     async def update_playbook(
@@ -181,6 +197,8 @@ class InMemoryStore:
         self.crm_connections: dict[str, dict] = {}
         self.event_discoveries: dict[str, EventDiscoveryRead] = {}
         self.events: dict[str, IndustryEventRead] = {}
+        self.social_discoveries: dict[str, SocialIntentDiscoveryRead] = {}
+        self.social_candidates: dict[str, SocialPostCandidate] = {}
         self.playbooks: dict[str, Playbook] = {
             "default-playbook": Playbook(id="default-playbook", **DEFAULT_PLAYBOOK_DATA)
         }
@@ -378,6 +396,40 @@ class InMemoryStore:
 
     async def get_event(self, event_id: str) -> IndustryEventRead | None:
         return self.events.get(event_id)
+
+    async def save_social_discovery(
+        self, discovery: SocialIntentDiscoveryRead
+    ) -> SocialIntentDiscoveryRead:
+        self.social_discoveries[discovery.id] = discovery
+        for candidate in discovery.candidates:
+            self.social_candidates[candidate.id] = candidate
+        return discovery
+
+    async def list_social_candidates(
+        self, event_name: str | None = None
+    ) -> list[SocialPostCandidate]:
+        normalized = event_name.strip().lower() if event_name else None
+        candidates = list(self.social_candidates.values())
+        if normalized:
+            candidates = [
+                candidate
+                for candidate in candidates
+                if candidate.event_name.strip().lower() == normalized
+            ]
+        return sorted(candidates, key=lambda item: item.created_at, reverse=True)
+
+    async def get_social_candidate(self, candidate_id: str) -> SocialPostCandidate | None:
+        return self.social_candidates.get(candidate_id)
+
+    async def mark_social_candidate_converted(
+        self, candidate_id: str, capture_id: str
+    ) -> None:
+        candidate = self.social_candidates.get(candidate_id)
+        if not candidate:
+            return
+        self.social_candidates[candidate_id] = candidate.model_copy(
+            update={"status": "converted", "converted_capture_id": capture_id}
+        )
 
     async def list_playbooks(self) -> list[Playbook]:
         return list(self.playbooks.values())
@@ -1485,6 +1537,151 @@ class PostgresStore:
                 return None
             return await self._event_from_row(conn, row)
 
+    async def save_social_discovery(
+        self, discovery: SocialIntentDiscoveryRead
+    ) -> SocialIntentDiscoveryRead:
+        async with self.engine.begin() as conn:
+            organization_id = await self._resolve_organization_id(conn, discovery.organization_id)
+            request = discovery.request.model_copy(update={"organization_id": organization_id})
+            discovery_row = (
+                await conn.execute(
+                    text(
+                        """
+                        insert into public.social_intent_discoveries (
+                          organization_id,
+                          rep_user_id,
+                          event_name,
+                          platforms,
+                          hashtags,
+                          keywords,
+                          organizer_handles,
+                          sponsor_names,
+                          location,
+                          date_start,
+                          date_end,
+                          pasted_posts,
+                          max_posts,
+                          status,
+                          warnings
+                        )
+                        values (
+                          :organization_id,
+                          :rep_user_id,
+                          :event_name,
+                          cast(:platforms as jsonb),
+                          cast(:hashtags as jsonb),
+                          cast(:keywords as jsonb),
+                          cast(:organizer_handles as jsonb),
+                          cast(:sponsor_names as jsonb),
+                          :location,
+                          :date_start,
+                          :date_end,
+                          :pasted_posts,
+                          :max_posts,
+                          :status,
+                          cast(:warnings as jsonb)
+                        )
+                        returning *
+                        """
+                    ),
+                    {
+                        "organization_id": organization_id,
+                        "rep_user_id": _uuid_or_none(discovery.rep_id),
+                        "event_name": request.event_name,
+                        "platforms": _json(request.platforms),
+                        "hashtags": _json(request.hashtags),
+                        "keywords": _json(request.keywords),
+                        "organizer_handles": _json(request.organizer_handles),
+                        "sponsor_names": _json(request.sponsor_names),
+                        "location": request.location,
+                        "date_start": request.date_start,
+                        "date_end": request.date_end,
+                        "pasted_posts": request.pasted_posts,
+                        "max_posts": request.max_posts,
+                        "status": discovery.status,
+                        "warnings": _json(discovery.warnings),
+                    },
+                )
+            ).mappings().one()
+
+            saved_candidates = []
+            for candidate in discovery.candidates:
+                saved_candidates.append(
+                    await self._insert_social_candidate(
+                        conn,
+                        organization_id,
+                        str(discovery_row["id"]),
+                        candidate,
+                    )
+                )
+
+            return SocialIntentDiscoveryRead(
+                id=str(discovery_row["id"]),
+                organization_id=organization_id,
+                rep_id=discovery.rep_id,
+                request=request,
+                status=discovery_row["status"],
+                candidates=saved_candidates,
+                warnings=_parse_json(discovery_row["warnings"], []),
+                created_at=discovery_row["created_at"],
+            )
+
+    async def list_social_candidates(
+        self, event_name: str | None = None
+    ) -> list[SocialPostCandidate]:
+        params = {}
+        where_clause = ""
+        if event_name:
+            where_clause = "where lower(event_name) = lower(:event_name)"
+            params["event_name"] = event_name.strip()
+        async with self.engine.connect() as conn:
+            rows = (
+                await conn.execute(
+                    text(
+                        f"""
+                        select *
+                        from public.social_post_candidates
+                        {where_clause}
+                        order by created_at desc
+                        """
+                    ),
+                    params,
+                )
+            ).mappings().all()
+            return [_social_candidate_from_row(row) for row in rows]
+
+    async def get_social_candidate(self, candidate_id: str) -> SocialPostCandidate | None:
+        if not _is_uuid(candidate_id):
+            return None
+        async with self.engine.connect() as conn:
+            row = (
+                await conn.execute(
+                    text("select * from public.social_post_candidates where id = :candidate_id"),
+                    {"candidate_id": candidate_id},
+                )
+            ).mappings().first()
+            return _social_candidate_from_row(row) if row else None
+
+    async def mark_social_candidate_converted(
+        self, candidate_id: str, capture_id: str
+    ) -> None:
+        if not _is_uuid(candidate_id) or not _is_uuid(capture_id):
+            return None
+        async with self.engine.begin() as conn:
+            await conn.execute(
+                text(
+                    """
+                    update public.social_post_candidates
+                    set status = 'converted',
+                        converted_capture_id = :capture_id,
+                        updated_at = now()
+                    where id = :candidate_id
+                    """
+                ),
+                {"candidate_id": candidate_id, "capture_id": capture_id},
+            )
+        return None
+
     async def list_playbooks(self) -> list[Playbook]:
         async with self.engine.begin() as conn:
             organization_id = await self._resolve_organization_id(conn, "demo-org")
@@ -1854,6 +2051,97 @@ class PostgresStore:
             )
         ).mappings().first()
         return _draft_from_row(row) if row else None
+
+    async def _insert_social_candidate(
+        self,
+        conn,
+        organization_id: str,
+        discovery_id: str,
+        candidate: SocialPostCandidate,
+    ) -> SocialPostCandidate:
+        row = (
+            await conn.execute(
+                text(
+                    """
+                    insert into public.social_post_candidates (
+                      organization_id,
+                      social_intent_discovery_id,
+                      event_name,
+                      platform,
+                      author_name,
+                      author_handle,
+                      author_profile_url,
+                      author_company,
+                      author_title,
+                      post_text,
+                      post_url,
+                      posted_at,
+                      evidence,
+                      classification,
+                      confidence,
+                      relevance_reason,
+                      suggested_angle,
+                      source_query,
+                      inferred,
+                      status,
+                      converted_capture_id
+                    )
+                    values (
+                      :organization_id,
+                      :social_intent_discovery_id,
+                      :event_name,
+                      :platform,
+                      :author_name,
+                      :author_handle,
+                      :author_profile_url,
+                      :author_company,
+                      :author_title,
+                      :post_text,
+                      :post_url,
+                      :posted_at,
+                      cast(:evidence as jsonb),
+                      :classification,
+                      :confidence,
+                      :relevance_reason,
+                      :suggested_angle,
+                      :source_query,
+                      :inferred,
+                      :status,
+                      :converted_capture_id
+                    )
+                    returning *
+                    """
+                ),
+                {
+                    "organization_id": organization_id,
+                    "social_intent_discovery_id": discovery_id,
+                    "event_name": candidate.event_name,
+                    "platform": candidate.platform,
+                    "author_name": candidate.author_name,
+                    "author_handle": candidate.author_handle,
+                    "author_profile_url": candidate.author_profile_url,
+                    "author_company": candidate.author_company,
+                    "author_title": candidate.author_title,
+                    "post_text": candidate.post_text,
+                    "post_url": candidate.post_url,
+                    "posted_at": candidate.posted_at,
+                    "evidence": _json(candidate.evidence),
+                    "classification": candidate.classification,
+                    "confidence": candidate.confidence.value,
+                    "relevance_reason": candidate.relevance_reason,
+                    "suggested_angle": candidate.suggested_angle,
+                    "source_query": candidate.source_query,
+                    "inferred": candidate.inferred,
+                    "status": candidate.status,
+                    "converted_capture_id": (
+                        candidate.converted_capture_id
+                        if _is_uuid(candidate.converted_capture_id)
+                        else None
+                    ),
+                },
+            )
+        ).mappings().one()
+        return _social_candidate_from_row(row)
 
     async def _insert_event(
         self,
@@ -2376,6 +2664,38 @@ def _event_draft_from_row(row) -> EventOutreachDraft:
         subject=row["subject"],
         body=row["body"],
         inferred_claims_used=row["inferred_claims_used"],
+        created_at=row["created_at"],
+    )
+
+
+def _social_candidate_from_row(row) -> SocialPostCandidate:
+    return SocialPostCandidate(
+        id=str(row["id"]),
+        organization_id=str(row["organization_id"]),
+        discovery_id=str(row["social_intent_discovery_id"])
+        if row["social_intent_discovery_id"]
+        else None,
+        event_name=row["event_name"],
+        platform=row["platform"],
+        author_name=row["author_name"],
+        author_handle=row["author_handle"],
+        author_profile_url=row["author_profile_url"],
+        author_company=row["author_company"],
+        author_title=row["author_title"],
+        post_text=row["post_text"],
+        post_url=row["post_url"],
+        posted_at=row["posted_at"],
+        evidence=_parse_json(row["evidence"], []),
+        classification=row["classification"],
+        confidence=row["confidence"],
+        relevance_reason=row["relevance_reason"],
+        suggested_angle=row["suggested_angle"],
+        source_query=row["source_query"],
+        inferred=row["inferred"],
+        status=row["status"],
+        converted_capture_id=str(row["converted_capture_id"])
+        if row["converted_capture_id"]
+        else None,
         created_at=row["created_at"],
     )
 

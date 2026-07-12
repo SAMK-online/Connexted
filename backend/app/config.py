@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     prospeo_base_url: str = "https://api.prospeo.io"
     prospeo_enrich_mobile: bool = False
     prospeo_only_verified_email: bool = True
+    x_bearer_token: str | None = None
+    x_api_base_url: str = "https://api.x.com/2"
     google_application_credentials: str | None = Field(default=None)
 
     hubspot_client_id: str | None = None

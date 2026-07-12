@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, captures, crm, drafts, events, reports, reviews, webhooks
+from app.api import admin, captures, crm, drafts, events, reports, reviews, social, webhooks
 from app.config import get_settings
 from app.store import create_store
 
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
     app.include_router(crm.router, prefix="/api/crm", tags=["crm"])
     app.include_router(events.router, prefix="/api/events", tags=["events"])
+    app.include_router(social.router, prefix="/api/social", tags=["social"])
     app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
     @app.get("/health")

@@ -17,6 +17,7 @@ class CaptureSource(StrEnum):
     WHATSAPP = "whatsapp"
     WEB = "web"
     EVENT_RADAR = "event_radar"
+    SOCIAL_INTENT = "social_intent"
 
 
 class CaptureStatus(StrEnum):
@@ -361,3 +362,61 @@ class EventDiscoveryRead(BaseModel):
     events: list[IndustryEventRead] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class SocialIntentDiscoveryRequest(BaseModel):
+    organization_id: str = "demo-org"
+    rep_id: str = "demo-rep"
+    event_name: str
+    platforms: list[str] = Field(default_factory=lambda: ["x"])
+    hashtags: list[str] = Field(default_factory=list)
+    keywords: list[str] = Field(default_factory=list)
+    organizer_handles: list[str] = Field(default_factory=list)
+    sponsor_names: list[str] = Field(default_factory=list)
+    location: str | None = None
+    date_start: date | None = None
+    date_end: date | None = None
+    pasted_posts: str = ""
+    max_posts: int = Field(default=10, ge=1, le=50)
+
+
+class SocialPostCandidate(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("soc"))
+    organization_id: str
+    discovery_id: str | None = None
+    event_name: str
+    platform: str
+    author_name: str | None = None
+    author_handle: str | None = None
+    author_profile_url: str | None = None
+    author_company: str | None = None
+    author_title: str | None = None
+    post_text: str
+    post_url: str | None = None
+    posted_at: datetime | None = None
+    evidence: list[str] = Field(default_factory=list)
+    classification: str
+    confidence: ConfidenceLabel = ConfidenceLabel.LOW
+    relevance_reason: str
+    suggested_angle: str
+    source_query: str | None = None
+    inferred: bool = True
+    status: str = "prospective"
+    converted_capture_id: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class SocialIntentDiscoveryRead(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("socdisc"))
+    organization_id: str
+    rep_id: str
+    request: SocialIntentDiscoveryRequest
+    status: str = "completed"
+    candidates: list[SocialPostCandidate] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class SocialCandidateConvertRequest(BaseModel):
+    rep_id: str = "demo-rep"
+    notes: str | None = None

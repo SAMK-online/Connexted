@@ -1,23 +1,34 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   ArrowUpRight,
   Building2,
   CalendarDays,
   ClipboardList,
+  ExternalLink,
   FolderOpen,
   Inbox,
+  Plus,
+  Radio,
+  RefreshCw,
   Search,
   UserRound,
   UsersRound
 } from "lucide-react";
-import { listCaptures } from "../lib/api.js";
+import {
+  convertSocialCandidate,
+  discoverSocialIntent,
+  listCaptures,
+  listSocialCandidates
+} from "../lib/api.js";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES = {
@@ -29,11 +40,18 @@ const STATUS_STYLES = {
 };
 
 export default function Dashboard() {
+  const queryClient = useQueryClient();
   const captures = useQuery({ queryKey: ["captures"], queryFn: listCaptures });
+  const socialCandidates = useQuery({
+    queryKey: ["social-candidates"],
+    queryFn: () => listSocialCandidates()
+  });
   const [query, setQuery] = useState("");
   const list = captures.data || [];
+  const socialList = socialCandidates.data || [];
   const folders = useMemo(() => groupByEvent(list, query), [list, query]);
-  const stats = useMemo(() => buildStats(list), [list]);
+  const candidatesByEvent = useMemo(() => groupSocialCandidates(socialList), [socialList]);
+  const stats = useMemo(() => buildStats(list, socialList), [list, socialList]);
 
   return (
     <section>
@@ -41,13 +59,18 @@ export default function Dashboard() {
         eyebrow="Event dashboard"
         title="Event folders"
         subtitle="See every person met at an event, grouped by the event folder they came from."
-        action={<Badge variant="outline">{stats.people} people captured</Badge>}
+        action={
+          <Badge variant="outline">
+            {stats.people} captured · {stats.prospects} social prospects
+          </Badge>
+        }
       />
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <StatCard icon={FolderOpen} label="Events" value={stats.events} />
         <StatCard icon={UsersRound} label="People" value={stats.people} />
         <StatCard icon={Building2} label="Companies" value={stats.companies} />
+        <StatCard icon={Radio} label="Prospects" value={stats.prospects} />
         <StatCard icon={Inbox} label="Review ready" value={stats.reviewReady} />
       </div>
 
@@ -110,6 +133,12 @@ export default function Dashboard() {
                   <PrepColumn title="Prioritize" items={folder.prep.prioritize} />
                 </div>
               </div>
+              <SocialIntentPanel
+                folder={folder}
+                candidates={candidatesByEvent.get(folder.key) || []}
+                isLoading={socialCandidates.isLoading}
+                queryClient={queryClient}
+              />
               {folder.people.map((capture) => (
                 <Link
                   key={capture.id}
@@ -185,6 +214,212 @@ function EmptyState({ children }) {
   );
 }
 
+function SocialIntentPanel({ folder, candidates, isLoading, queryClient }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const fieldPrefix = folder.key.replace(/[^a-z0-9_-]/g, "-");
+  const discover = useMutation({
+    mutationFn: discoverSocialIntent,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["social-candidates"] });
+    }
+  });
+  const convert = useMutation({
+    mutationFn: (candidateId) => convertSocialCandidate(candidateId, { rep_id: "demo-rep" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["captures"] });
+      queryClient.invalidateQueries({ queryKey: ["social-candidates"] });
+    }
+  });
+
+  function onSubmit(event) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    discover.mutate({
+      organization_id: "demo-org",
+      rep_id: "demo-rep",
+      event_name: folder.name,
+      platforms: ["x"],
+      hashtags: splitList(form.get("hashtags")),
+      keywords: splitList(form.get("keywords")),
+      organizer_handles: splitList(form.get("organizer_handles")),
+      sponsor_names: splitList(form.get("sponsor_names")),
+      pasted_posts: String(form.get("pasted_posts") || ""),
+      max_posts: 10
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-background p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-secondary">
+            <Radio className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-display text-base font-semibold tracking-tight">
+              Prospective visitors
+            </h3>
+            <p className="truncate text-sm text-muted-foreground">
+              {candidates.length
+                ? `${candidates.length} public social signals saved`
+                : "Find public posts tied to this event"}
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setIsOpen((value) => !value)}
+        >
+          {isOpen ? "Close search" : "Find visitors"}
+        </Button>
+      </div>
+
+      {isOpen ? (
+        <form onSubmit={onSubmit} className="mt-4 grid gap-3">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Hashtags" htmlFor={`${fieldPrefix}-hashtags`}>
+              <Input
+                id={`${fieldPrefix}-hashtags`}
+                name="hashtags"
+                placeholder="#SaaStrAnnual, #RevOps"
+              />
+            </Field>
+            <Field label="Keywords" htmlFor={`${fieldPrefix}-keywords`}>
+              <Input
+                id={`${fieldPrefix}-keywords`}
+                name="keywords"
+                placeholder="attending, dinner, partnerships"
+              />
+            </Field>
+            <Field label="Organizer handles" htmlFor={`${fieldPrefix}-handles`}>
+              <Input
+                id={`${fieldPrefix}-handles`}
+                name="organizer_handles"
+                placeholder="@eventhandle"
+              />
+            </Field>
+            <Field label="Sponsors" htmlFor={`${fieldPrefix}-sponsors`}>
+              <Input
+                id={`${fieldPrefix}-sponsors`}
+                name="sponsor_names"
+                placeholder="HubSpot, Salesforce"
+              />
+            </Field>
+          </div>
+          <Field label="Public posts or links" htmlFor={`${fieldPrefix}-posts`}>
+            <Textarea
+              id={`${fieldPrefix}-posts`}
+              name="pasted_posts"
+              placeholder="Paste LinkedIn, X, or Instagram post text/URLs when an API is not available."
+            />
+          </Field>
+          {discover.isError ? (
+            <p className="text-sm text-destructive">{discover.error.message}</p>
+          ) : null}
+          <div className="flex justify-end">
+            <Button type="submit" size="sm" disabled={discover.isPending}>
+              {discover.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Searching
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4" />
+                  Search social posts
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      ) : null}
+
+      <div className="mt-4 grid gap-2">
+        {isLoading ? <p className="text-sm text-muted-foreground">Loading social prospects...</p> : null}
+        {!isLoading && !candidates.length ? (
+          <p className="text-sm text-muted-foreground">
+            No prospective visitors saved for this event yet.
+          </p>
+        ) : null}
+        {candidates.map((candidate) => (
+          <CandidateRow
+            key={candidate.id}
+            candidate={candidate}
+            isConverting={convert.isPending && convert.variables === candidate.id}
+            onConvert={() => convert.mutate(candidate.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, htmlFor, children }) {
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={htmlFor}>{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function CandidateRow({ candidate, isConverting, onConvert }) {
+  const converted = candidate.status === "converted" && candidate.converted_capture_id;
+  return (
+    <div className="grid gap-3 rounded-md border border-border bg-secondary/20 p-3 md:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate font-medium">
+            {candidate.author_name || candidate.author_handle || "Public social lead"}
+          </p>
+          <Badge variant="outline">{formatLabel(candidate.classification)}</Badge>
+          <Badge variant={candidate.confidence === "high" ? "default" : "muted"}>
+            {candidate.confidence}
+          </Badge>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {[candidate.author_title, candidate.author_company].filter(Boolean).join(", ") ||
+            candidate.platform}
+        </p>
+        <p className="mt-2 line-clamp-2 text-sm">{candidate.post_text}</p>
+        <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+          {candidate.suggested_angle}
+        </p>
+      </div>
+      <div className="flex items-center justify-between gap-2 md:justify-end">
+        {candidate.post_url ? (
+          <Button asChild variant="ghost" size="icon" aria-label="Open source post">
+            <a href={candidate.post_url} target="_blank" rel="noreferrer">
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
+        ) : null}
+        {converted ? (
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/app/captures/${candidate.converted_capture_id}`}>Open capture</Link>
+          </Button>
+        ) : (
+          <Button type="button" variant="outline" size="sm" onClick={onConvert} disabled={isConverting}>
+            {isConverting ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Converting
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                Convert
+              </>
+            )}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function groupByEvent(captures, query) {
   const normalizedQuery = query.trim().toLowerCase();
   const map = new Map();
@@ -220,6 +455,18 @@ function groupByEvent(captures, query) {
     .sort((a, b) => b.latest - a.latest);
 }
 
+function groupSocialCandidates(candidates) {
+  const map = new Map();
+  for (const candidate of candidates) {
+    const key = normalizeEventName(candidate.event_name).toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+    map.get(key).push(candidate);
+  }
+  return map;
+}
+
 function PrepColumn({ title, items }) {
   return (
     <div>
@@ -238,13 +485,14 @@ function PrepColumn({ title, items }) {
   );
 }
 
-function buildStats(captures) {
+function buildStats(captures, socialCandidates = []) {
   const eventNames = new Set(captures.map((capture) => normalizeEventName(capture.event_name)));
   const companies = new Set(captures.map((capture) => capture.company_name).filter(Boolean));
   return {
     events: eventNames.size,
     people: captures.length,
     companies: companies.size,
+    prospects: socialCandidates.filter((candidate) => candidate.status !== "converted").length,
     reviewReady: captures.filter((capture) => capture.status === "review_ready").length
   };
 }
@@ -301,4 +549,15 @@ function formatDate(timestamp) {
     day: "numeric",
     year: "numeric"
   }).format(new Date(timestamp));
+}
+
+function splitList(value) {
+  return String(value || "")
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatLabel(value) {
+  return String(value || "").replace(/_/g, " ");
 }

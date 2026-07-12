@@ -84,6 +84,25 @@ export function listEvents() {
   return request("/api/events");
 }
 
+export function discoverSocialIntent(payload) {
+  return request("/api/social/discover", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function listSocialCandidates(eventName) {
+  const suffix = eventName ? `?event_name=${encodeURIComponent(eventName)}` : "";
+  return request(`/api/social/candidates${suffix}`);
+}
+
+export function convertSocialCandidate(candidateId, payload = {}) {
+  return request(`/api/social/candidates/${candidateId}/convert`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export function listPlaybooks() {
   return request("/api/admin/playbooks");
 }
