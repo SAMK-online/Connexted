@@ -110,3 +110,10 @@ DATABASE_URL=postgresql+asyncpg://...
 The database schema lives in `supabase/migrations`. The API still supports mock providers
 while using Postgres persistence, so capture/report/review/Event Radar flows can be tested
 before OCR, research, LLM, and HubSpot providers are connected.
+
+## Browser Extension
+
+The `browser-extension` directory contains a Chrome/Edge MV3 extension for sending public
+social post URLs and selected text into CONNEXTed event folders. Load it unpacked from
+`chrome://extensions`, then point it at the backend API and app URL from the extension
+connection settings.

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Send to CONNEXTed</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <img class="mark" src="icons/connexted-title-logo.png" alt="" />
+        <div>
+          <p class="eyebrow">CONNEXTed</p>
+          <h1>Send post</h1>
+        </div>
+      </header>
+
+      <form id="post-form" class="form">
+        <label class="field">
+          <span>Event folder</span>
+          <input id="event-name" name="event_name" placeholder="AI Operators Dinner" required />
+        </label>
+
+        <label class="field">
+          <span>Post URL</span>
+          <input id="post-url" name="post_url" type="url" required />
+        </label>
+
+        <label class="field">
+          <span>Visible post text or context</span>
+          <textarea id="post-text" name="post_text" rows="5"></textarea>
+        </label>
+
+        <div class="grid">
+          <label class="field">
+            <span>Hashtags</span>
+            <input id="hashtags" name="hashtags" placeholder="#SaaStr" />
+          </label>
+          <label class="field">
+            <span>Keywords</span>
+            <input id="keywords" name="keywords" placeholder="dinner, partnerships" />
+          </label>
+        </div>
+
+        <details class="settings">
+          <summary>Connection</summary>
+          <label class="field">
+            <span>API URL</span>
+            <input id="api-base-url" name="api_base_url" type="url" required />
+          </label>
+          <label class="field">
+            <span>App URL</span>
+            <input id="app-base-url" name="app_base_url" type="url" required />
+          </label>
+          <div class="grid">
+            <label class="field">
+              <span>Organization</span>
+              <input id="organization-id" name="organization_id" required />
+            </label>
+            <label class="field">
+              <span>Rep</span>
+              <input id="rep-id" name="rep_id" required />
+            </label>
+          </div>
+        </details>
+
+        <p id="status" class="status" role="status"></p>
+
+        <div class="actions">
+          <button id="open-dashboard" type="button" class="secondary">Dashboard</button>
+          <button id="send-post" type="submit">Send post</button>
+        </div>
+      </form>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
