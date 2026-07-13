@@ -40,6 +40,10 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))"
+        },
+        signal: {
+          DEFAULT: "hsl(var(--signal))",
+          foreground: "hsl(var(--signal-foreground))"
         }
       },
       borderRadius: {
@@ -90,13 +94,18 @@ export default {
         marquee: {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(-50%)" }
+        },
+        "pulse-signal": {
+          "0%, 100%": { opacity: "1", boxShadow: "0 0 0 0 hsl(var(--signal) / 0.5)" },
+          "50%": { opacity: "0.7", boxShadow: "0 0 0 4px hsl(var(--signal) / 0)" }
         }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-up": "fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both",
-        marquee: "marquee 34s linear infinite"
+        marquee: "marquee 34s linear infinite",
+        "pulse-signal": "pulse-signal 2.2s ease-in-out infinite"
       }
     }
   },

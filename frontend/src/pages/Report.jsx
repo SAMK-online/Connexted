@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const CONFIDENCE_STYLES = {
-  high: "border-transparent bg-foreground text-background",
+  high: "border-transparent bg-signal text-signal-foreground",
   medium: "border-border text-foreground",
   low: "border-border text-muted-foreground"
 };
@@ -121,9 +121,10 @@ export default function Report() {
       </header>
 
       {/* Recommended action */}
-      <Card className="mb-6 overflow-hidden border-foreground/15">
+      <Card className="mb-6 overflow-hidden border-foreground/15 shadow-[inset_0_2px_0_hsl(var(--signal))]">
         <div className="border-b border-border bg-secondary/40 px-6 py-3">
-          <span className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
+          <span className="flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
+            <span className="h-1.5 w-1.5 bg-signal" aria-hidden="true" />
             Recommended action
           </span>
         </div>
@@ -293,7 +294,7 @@ export default function Report() {
                   {draft.subject}
                 </p>
               ) : null}
-              <pre className="mt-3 whitespace-pre-wrap rounded-md bg-foreground p-4 font-mono text-xs leading-relaxed text-background">
+              <pre className="mt-3 whitespace-pre-wrap rounded-md border-l-2 border-signal bg-foreground p-4 font-mono text-xs leading-relaxed text-background">
                 {draft.body}
               </pre>
               {draft.inferred_claims_used ? (

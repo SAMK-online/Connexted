@@ -236,7 +236,7 @@ function SiteNav() {
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
             <Link to="/app">Sign in</Link>
           </Button>
-          <Button asChild size="sm" shape="pill">
+          <Button asChild size="sm" shape="pill" variant="accent">
             <Link to="/app">
               Open app
               <ArrowUpRight className="h-4 w-4" />
@@ -250,7 +250,7 @@ function SiteNav() {
 
 function Hero() {
   return (
-    <section className="dark relative overflow-hidden border-b border-border bg-background text-foreground">
+    <section className="dark bg-noise relative overflow-hidden border-b border-border bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)]" />
       <div className="relative z-10 mx-auto max-w-[1200px] px-6 py-20 md:py-28">
         <div className="relative mb-14 h-[320px] animate-fade-up md:h-[440px]">
@@ -259,7 +259,7 @@ function Hero() {
 
         <div className="flex animate-fade-up items-center gap-3">
           <Badge variant="outline" className="gap-1.5 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
+            <span className="h-1.5 w-1.5 rounded-full bg-signal animate-pulse-signal" />
             WhatsApp-first GTM
           </Badge>
           <span className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
@@ -272,7 +272,7 @@ function Hero() {
           <br />
           conversations into
           <br />
-          <span className="italic">reviewed follow-up.</span>
+          <span className="italic text-signal">reviewed follow-up.</span>
         </h1>
 
         <p className="mt-8 max-w-xl animate-fade-up text-lg leading-relaxed text-muted-foreground">
@@ -283,7 +283,7 @@ function Hero() {
         </p>
 
         <div className="mt-10 flex animate-fade-up flex-wrap items-center gap-4">
-          <Button asChild size="lg" shape="pill">
+          <Button asChild size="lg" shape="pill" variant="accent" className="glow-signal">
             <Link to="/app">
               Start capturing
               <ArrowRight className="h-4 w-4" />
@@ -305,7 +305,7 @@ function Hero() {
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/70 via-transparent to-transparent" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between px-5 py-4">
               <span className="flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.2em] text-background/85">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-background" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-signal" />
                 Fig. 01 — Capture at the moment of conversation
               </span>
               <span className="hidden font-mono text-[0.7rem] uppercase tracking-[0.2em] text-background/60 sm:inline">
@@ -341,7 +341,7 @@ function Marquee() {
             className="flex items-center gap-10 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground"
           >
             {item}
-            <span className="text-border">✦</span>
+            <span className="text-signal">✦</span>
           </span>
         ))}
       </div>
@@ -352,7 +352,7 @@ function Marquee() {
 function SectionLabel({ index, children }) {
   return (
     <div className="flex items-center gap-3 font-mono text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
-      <span className="text-foreground">{index}</span>
+      <span className="text-signal">{index}</span>
       <span className="h-px w-8 bg-border" />
       {children}
     </div>
@@ -430,7 +430,7 @@ function Pipeline() {
     <section id="pipeline" className="border-b border-border bg-foreground text-background">
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
         <div className="flex items-center gap-3 font-mono text-[0.7rem] uppercase tracking-[0.22em] text-background/50">
-          <span className="text-background">02</span>
+          <span className="text-signal">02</span>
           <span className="h-px w-8 bg-background/30" />
           The multi-agent pipeline
         </div>
@@ -444,10 +444,13 @@ function Pipeline() {
 
         <div className="mt-16 grid gap-px overflow-hidden rounded-lg border border-background/15 bg-background/15 md:grid-cols-5">
           {PIPELINE.map((step, i) => (
-            <div key={step.name} className="flex flex-col gap-4 bg-foreground p-6">
+            <div
+              key={step.name}
+              className="group flex flex-col gap-4 bg-foreground p-6 transition-colors hover:bg-foreground/95"
+            >
               <div className="flex items-center justify-between">
-                <step.icon className="h-5 w-5 text-background" />
-                <span className="font-mono text-xs text-background/40">
+                <step.icon className="h-5 w-5 text-background transition-colors group-hover:text-signal" />
+                <span className="font-mono text-xs text-signal/60">
                   0{i + 1}
                 </span>
               </div>
@@ -526,7 +529,7 @@ function Features() {
               key={feature.title}
               className="group flex flex-col gap-4 bg-background p-7 transition-colors hover:bg-secondary/40"
             >
-              <feature.icon className="h-5 w-5 text-foreground" />
+              <feature.icon className="h-5 w-5 text-foreground transition-colors group-hover:text-signal" />
               <h3 className="font-display text-lg font-semibold tracking-tight">
                 {feature.title}
               </h3>
@@ -570,7 +573,7 @@ function Trust() {
                 <span className="mt-0.5 font-mono text-xs text-muted-foreground">
                   0{i + 1}
                 </span>
-                <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
+                <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-signal" />
                 <span className="text-base leading-relaxed text-foreground/85">{item}</span>
               </li>
             ))}
@@ -583,16 +586,18 @@ function Trust() {
 
 function CtaBand() {
   return (
-    <section className="border-b border-border">
-      <div className="mx-auto max-w-[1200px] px-6 py-24 text-center md:py-32">
-        <span className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
+    <section className="dark bg-noise relative overflow-hidden border-b border-border bg-background text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-grid-dense [mask-image:radial-gradient(ellipse_at_center,black,transparent_78%)]" />
+      <div className="relative z-10 mx-auto max-w-[1200px] px-6 py-24 text-center md:py-32">
+        <span className="inline-flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-signal animate-pulse-signal" />
           Ready when you are
         </span>
         <h2 className="mx-auto mt-6 max-w-3xl font-display text-[clamp(2.25rem,6vw,4.5rem)] font-semibold leading-[0.98] tracking-tightest text-balance">
-          Capture the conversation. Keep the judgment.
+          Capture the conversation. <span className="italic text-signal">Keep the judgment.</span>
         </h2>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-          <Button asChild size="lg" shape="pill">
+          <Button asChild size="lg" shape="pill" variant="accent" className="glow-signal">
             <Link to="/app">
               Open CONNEXTed
               <ArrowUpRight className="h-4 w-4" />
@@ -630,7 +635,8 @@ function SiteFooter() {
           </Link>
         </nav>
       </div>
-      <p className="mt-8 border-t border-border pt-8 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
+      <p className="mt-8 flex items-center gap-2 border-t border-border pt-8 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
+        <span className="h-1.5 w-1.5 bg-signal" aria-hidden="true" />
         CONNEXTed — WhatsApp-first GTM intelligence · Human-reviewed outreach
       </p>
     </footer>

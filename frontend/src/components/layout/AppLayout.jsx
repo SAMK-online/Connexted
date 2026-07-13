@@ -42,35 +42,48 @@ export default function AppLayout() {
                   cn(
                     "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-background/10 text-background"
+                      ? "bg-background/10 text-background shadow-[inset_2px_0_0_hsl(var(--signal))]"
                       : "text-background/60 hover:bg-background/5 hover:text-background"
                   )
                 }
               >
-                <Icon className="h-4 w-4" />
-                {label}
+                {({ isActive }) => (
+                  <>
+                    <Icon className={cn("h-4 w-4", isActive && "text-signal")} />
+                    {label}
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
         </div>
 
-        <div className="rounded-lg border border-background/15 bg-background/5 p-4">
-          <div className="flex items-center gap-2 text-background/80">
-            <MessageSquareText className="h-4 w-4" />
-            <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em]">
-              WhatsApp intake
-            </span>
+        <div className="flex flex-col gap-3">
+          <div className="rounded-lg border border-background/15 bg-background/5 p-4">
+            <div className="flex items-center gap-2 text-background/80">
+              <MessageSquareText className="h-4 w-4" />
+              <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em]">
+                WhatsApp intake
+              </span>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-background/55">
+              Local mock mode. Connect Twilio, OCR, research & HubSpot providers to go live.
+            </p>
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-background/55">
-            Local mock mode. Connect Twilio, OCR, research & HubSpot providers to go live.
-          </p>
+          <div className="flex items-center justify-between px-1 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-background/40">
+            <span className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-signal animate-pulse-signal" />
+              System nominal
+            </span>
+            <span>v0.1 · Local</span>
+          </div>
         </div>
       </aside>
 
       <div className="flex min-h-screen flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 px-5 py-3 backdrop-blur lg:px-8">
           <div className="flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
+            <span className="h-1.5 w-1.5 rounded-full bg-signal animate-pulse-signal" />
             WhatsApp-first GTM
             <span className="hidden text-border sm:inline">/</span>
             <span className="hidden sm:inline">Human-reviewed outreach</span>

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 const CONFIDENCE_STYLES = {
-  high: "border-transparent bg-foreground text-background",
+  high: "border-transparent bg-signal text-signal-foreground",
   medium: "border-border text-foreground",
   low: "border-border text-muted-foreground"
 };

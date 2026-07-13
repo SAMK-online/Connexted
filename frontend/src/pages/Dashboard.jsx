@@ -33,8 +33,8 @@ import { cn } from "@/lib/utils";
 
 const STATUS_STYLES = {
   queued: "border-border text-muted-foreground",
-  running: "border-border text-foreground",
-  review_ready: "border-transparent bg-foreground text-background",
+  running: "border-signal/50 text-foreground",
+  review_ready: "border-transparent bg-signal text-signal-foreground",
   needs_input: "border-border text-foreground",
   failed: "border-destructive/40 text-destructive"
 };
@@ -177,7 +177,7 @@ export default function Dashboard() {
 
 function StatCard({ icon: Icon, label, value }) {
   return (
-    <Card>
+    <Card className="group transition-colors hover:border-foreground/30">
       <CardContent className="flex items-center justify-between p-5">
         <div>
           <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">
@@ -185,8 +185,8 @@ function StatCard({ icon: Icon, label, value }) {
           </p>
           <p className="mt-2 font-display text-3xl font-semibold tracking-tight">{value}</p>
         </div>
-        <div className="grid h-10 w-10 place-items-center rounded-md border border-border bg-secondary/50">
-          <Icon className="h-5 w-5" />
+        <div className="grid h-10 w-10 place-items-center rounded-md border border-border bg-secondary/50 transition-colors group-hover:border-signal/50">
+          <Icon className="h-5 w-5 transition-colors group-hover:text-signal" />
         </div>
       </CardContent>
     </Card>

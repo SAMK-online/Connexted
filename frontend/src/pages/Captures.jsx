@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 
 const STATUS_STYLES = {
   queued: "border-border text-muted-foreground",
-  running: "border-border text-foreground",
-  review_ready: "border-transparent bg-foreground text-background",
+  running: "border-signal/50 text-foreground",
+  review_ready: "border-transparent bg-signal text-signal-foreground",
   needs_input: "border-border text-foreground",
   failed: "border-destructive/40 text-destructive"
 };
@@ -122,7 +122,7 @@ export default function Captures() {
             <Link
               key={capture.id}
               to={`/app/captures/${capture.id}`}
-              className="group flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-5 transition-all hover:border-foreground/30 hover:shadow-[0_1px_0_hsl(var(--foreground))]"
+              className="group flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-5 transition-all hover:border-foreground/30 hover:shadow-[0_2px_0_hsl(var(--signal))]"
             >
               <div className="min-w-0">
                 <h3 className="truncate font-display text-lg font-semibold tracking-tight">
