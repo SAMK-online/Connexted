@@ -258,6 +258,61 @@ def test_event_discovery_persists_recommendations(monkeypatch):
         assert len(events.json()) == 2
 
 
+def test_event_site_deep_dive_converts_confirmed_visitor(monkeypatch):
+    with make_client(monkeypatch) as client:
+        deep_dive = client.post(
+            "/api/events/deep-dive",
+            json={
+                "organization_id": "demo-org",
+                "rep_id": "demo-rep",
+                "event_name": "AI Operators Summit",
+                "event_url": "https://example.com/ai-operators/speakers",
+                "site_text": (
+                    "Speakers\n"
+                    "Ada Lovelace - VP Partnerships, Analytical Engines Inc.\n"
+                    "Sponsors\n"
+                    "Compiler Labs"
+                ),
+                "max_visitors": 10,
+            },
+        )
+
+        assert deep_dive.status_code == 200
+        body = deep_dive.json()
+        assert body["visitors"]
+        visitor = next(item for item in body["visitors"] if item["name"] == "Ada Lovelace")
+        assert visitor["visitor_role"] == "speaker"
+        assert visitor["company"] == "Analytical Engines Inc."
+        assert visitor["confidence"] == "high"
+        assert "stored as source evidence" in body["warnings"][0]
+
+        listed = client.get("/api/events/site-visitors?event_name=AI%20Operators%20Summit")
+        assert listed.status_code == 200
+        assert any(item["id"] == visitor["id"] for item in listed.json())
+
+        converted = client.post(
+            f"/api/events/site-visitors/{visitor['id']}/convert",
+            json={"rep_id": "demo-rep"},
+        )
+        assert converted.status_code == 200
+        capture = converted.json()
+        assert capture["source"] == "event_site"
+        assert capture["event_name"] == "AI Operators Summit"
+        assert capture["prospect_name"] == "Ada Lovelace"
+        assert "Confirmed public event-site listing" in capture["raw_text"]
+
+        updated_visitors = client.get(
+            "/api/events/site-visitors?event_name=AI%20Operators%20Summit"
+        ).json()
+        updated_visitor = next(item for item in updated_visitors if item["id"] == visitor["id"])
+        assert updated_visitor["status"] == "converted"
+        assert updated_visitor["converted_capture_id"] == capture["id"]
+
+        report = client.get(f"/api/reports/{capture['id']}")
+        assert report.status_code == 200
+        assert report.json()["meeting_prep"]["agenda"]
+
+
 def test_social_intent_discovery_converts_candidate_to_capture(monkeypatch):
     with make_client(monkeypatch) as client:
         discovery = client.post(
