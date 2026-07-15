@@ -17,6 +17,7 @@ class CaptureSource(StrEnum):
     WHATSAPP = "whatsapp"
     WEB = "web"
     EVENT_RADAR = "event_radar"
+    EVENT_SITE = "event_site"
     SOCIAL_INTENT = "social_intent"
 
 
@@ -362,6 +363,55 @@ class EventDiscoveryRead(BaseModel):
     events: list[IndustryEventRead] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class EventSiteDeepDiveRequest(BaseModel):
+    organization_id: str = "demo-org"
+    rep_id: str = "demo-rep"
+    event_name: str
+    event_url: str | None = None
+    site_text: str = ""
+    roles: list[str] = Field(
+        default_factory=lambda: ["speaker", "sponsor", "exhibitor", "organizer", "attendee"]
+    )
+    max_visitors: int = Field(default=20, ge=1, le=50)
+
+
+class EventSiteVisitor(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("evsite"))
+    organization_id: str
+    deep_dive_id: str | None = None
+    event_name: str
+    name: str
+    title: str | None = None
+    company: str | None = None
+    visitor_role: str
+    source_url: str | None = None
+    source_label: str = "Event site"
+    evidence: list[str] = Field(default_factory=list)
+    confidence: ConfidenceLabel = ConfidenceLabel.MEDIUM
+    relevance_reason: str
+    suggested_angle: str
+    inferred: bool = False
+    status: str = "confirmed"
+    converted_capture_id: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class EventSiteDeepDiveRead(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("evsitedisc"))
+    organization_id: str
+    rep_id: str
+    request: EventSiteDeepDiveRequest
+    status: str = "completed"
+    visitors: list[EventSiteVisitor] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class EventSiteVisitorConvertRequest(BaseModel):
+    rep_id: str = "demo-rep"
+    notes: str | None = None
 
 
 class SocialIntentDiscoveryRequest(BaseModel):

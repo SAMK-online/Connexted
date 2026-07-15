@@ -26,6 +26,8 @@ from app.schemas import (
     EventAttendee,
     EventDiscoveryRead,
     EventOutreachDraft,
+    EventSiteDeepDiveRead,
+    EventSiteVisitor,
     EventSource,
     IndustryEventRead,
     OutreachDraftRead,
@@ -144,6 +146,20 @@ class AppStore(Protocol):
 
     async def get_event(self, event_id: str) -> IndustryEventRead | None: ...
 
+    async def save_event_site_deep_dive(
+        self, deep_dive: EventSiteDeepDiveRead
+    ) -> EventSiteDeepDiveRead: ...
+
+    async def list_event_site_visitors(
+        self, event_name: str | None = None
+    ) -> list[EventSiteVisitor]: ...
+
+    async def get_event_site_visitor(self, visitor_id: str) -> EventSiteVisitor | None: ...
+
+    async def mark_event_site_visitor_converted(
+        self, visitor_id: str, capture_id: str
+    ) -> None: ...
+
     async def save_social_discovery(
         self, discovery: SocialIntentDiscoveryRead
     ) -> SocialIntentDiscoveryRead: ...
@@ -197,6 +213,8 @@ class InMemoryStore:
         self.crm_connections: dict[str, dict] = {}
         self.event_discoveries: dict[str, EventDiscoveryRead] = {}
         self.events: dict[str, IndustryEventRead] = {}
+        self.event_site_deep_dives: dict[str, EventSiteDeepDiveRead] = {}
+        self.event_site_visitors: dict[str, EventSiteVisitor] = {}
         self.social_discoveries: dict[str, SocialIntentDiscoveryRead] = {}
         self.social_candidates: dict[str, SocialPostCandidate] = {}
         self.playbooks: dict[str, Playbook] = {
@@ -396,6 +414,38 @@ class InMemoryStore:
 
     async def get_event(self, event_id: str) -> IndustryEventRead | None:
         return self.events.get(event_id)
+
+    async def save_event_site_deep_dive(
+        self, deep_dive: EventSiteDeepDiveRead
+    ) -> EventSiteDeepDiveRead:
+        self.event_site_deep_dives[deep_dive.id] = deep_dive
+        for visitor in deep_dive.visitors:
+            self.event_site_visitors[visitor.id] = visitor
+        return deep_dive
+
+    async def list_event_site_visitors(
+        self, event_name: str | None = None
+    ) -> list[EventSiteVisitor]:
+        normalized = event_name.strip().lower() if event_name else None
+        visitors = list(self.event_site_visitors.values())
+        if normalized:
+            visitors = [
+                visitor for visitor in visitors if visitor.event_name.strip().lower() == normalized
+            ]
+        return sorted(visitors, key=lambda item: item.created_at, reverse=True)
+
+    async def get_event_site_visitor(self, visitor_id: str) -> EventSiteVisitor | None:
+        return self.event_site_visitors.get(visitor_id)
+
+    async def mark_event_site_visitor_converted(
+        self, visitor_id: str, capture_id: str
+    ) -> None:
+        visitor = self.event_site_visitors.get(visitor_id)
+        if not visitor:
+            return
+        self.event_site_visitors[visitor_id] = visitor.model_copy(
+            update={"status": "converted", "converted_capture_id": capture_id}
+        )
 
     async def save_social_discovery(
         self, discovery: SocialIntentDiscoveryRead
@@ -1537,6 +1587,133 @@ class PostgresStore:
                 return None
             return await self._event_from_row(conn, row)
 
+    async def save_event_site_deep_dive(
+        self, deep_dive: EventSiteDeepDiveRead
+    ) -> EventSiteDeepDiveRead:
+        async with self.engine.begin() as conn:
+            organization_id = await self._resolve_organization_id(conn, deep_dive.organization_id)
+            request = deep_dive.request.model_copy(update={"organization_id": organization_id})
+            deep_dive_row = (
+                await conn.execute(
+                    text(
+                        """
+                        insert into public.event_site_deep_dives (
+                          organization_id,
+                          rep_user_id,
+                          event_name,
+                          event_url,
+                          site_text,
+                          roles,
+                          max_visitors,
+                          status,
+                          warnings
+                        )
+                        values (
+                          :organization_id,
+                          :rep_user_id,
+                          :event_name,
+                          :event_url,
+                          :site_text,
+                          cast(:roles as jsonb),
+                          :max_visitors,
+                          :status,
+                          cast(:warnings as jsonb)
+                        )
+                        returning *
+                        """
+                    ),
+                    {
+                        "organization_id": organization_id,
+                        "rep_user_id": _uuid_or_none(deep_dive.rep_id),
+                        "event_name": request.event_name,
+                        "event_url": request.event_url,
+                        "site_text": request.site_text,
+                        "roles": _json(request.roles),
+                        "max_visitors": request.max_visitors,
+                        "status": deep_dive.status,
+                        "warnings": _json(deep_dive.warnings),
+                    },
+                )
+            ).mappings().one()
+
+            saved_visitors = []
+            for visitor in deep_dive.visitors:
+                saved_visitors.append(
+                    await self._insert_event_site_visitor(
+                        conn,
+                        organization_id,
+                        str(deep_dive_row["id"]),
+                        visitor,
+                    )
+                )
+
+            return EventSiteDeepDiveRead(
+                id=str(deep_dive_row["id"]),
+                organization_id=organization_id,
+                rep_id=deep_dive.rep_id,
+                request=request,
+                status=deep_dive_row["status"],
+                visitors=saved_visitors,
+                warnings=_parse_json(deep_dive_row["warnings"], []),
+                created_at=deep_dive_row["created_at"],
+            )
+
+    async def list_event_site_visitors(
+        self, event_name: str | None = None
+    ) -> list[EventSiteVisitor]:
+        params = {}
+        where_clause = ""
+        if event_name:
+            where_clause = "where lower(event_name) = lower(:event_name)"
+            params["event_name"] = event_name.strip()
+        async with self.engine.connect() as conn:
+            rows = (
+                await conn.execute(
+                    text(
+                        f"""
+                        select *
+                        from public.event_site_visitors
+                        {where_clause}
+                        order by created_at desc
+                        """
+                    ),
+                    params,
+                )
+            ).mappings().all()
+            return [_event_site_visitor_from_row(row) for row in rows]
+
+    async def get_event_site_visitor(self, visitor_id: str) -> EventSiteVisitor | None:
+        if not _is_uuid(visitor_id):
+            return None
+        async with self.engine.connect() as conn:
+            row = (
+                await conn.execute(
+                    text("select * from public.event_site_visitors where id = :visitor_id"),
+                    {"visitor_id": visitor_id},
+                )
+            ).mappings().first()
+            return _event_site_visitor_from_row(row) if row else None
+
+    async def mark_event_site_visitor_converted(
+        self, visitor_id: str, capture_id: str
+    ) -> None:
+        if not _is_uuid(visitor_id) or not _is_uuid(capture_id):
+            return None
+        async with self.engine.begin() as conn:
+            await conn.execute(
+                text(
+                    """
+                    update public.event_site_visitors
+                    set status = 'converted',
+                        converted_capture_id = :capture_id,
+                        updated_at = now()
+                    where id = :visitor_id
+                    """
+                ),
+                {"visitor_id": visitor_id, "capture_id": capture_id},
+            )
+        return None
+
     async def save_social_discovery(
         self, discovery: SocialIntentDiscoveryRead
     ) -> SocialIntentDiscoveryRead:
@@ -2054,6 +2231,82 @@ class PostgresStore:
             )
         ).mappings().first()
         return _draft_from_row(row) if row else None
+
+    async def _insert_event_site_visitor(
+        self,
+        conn,
+        organization_id: str,
+        deep_dive_id: str,
+        visitor: EventSiteVisitor,
+    ) -> EventSiteVisitor:
+        row = (
+            await conn.execute(
+                text(
+                    """
+                    insert into public.event_site_visitors (
+                      organization_id,
+                      event_site_deep_dive_id,
+                      event_name,
+                      name,
+                      title,
+                      company,
+                      visitor_role,
+                      source_url,
+                      source_label,
+                      evidence,
+                      confidence,
+                      relevance_reason,
+                      suggested_angle,
+                      inferred,
+                      status,
+                      converted_capture_id
+                    )
+                    values (
+                      :organization_id,
+                      :event_site_deep_dive_id,
+                      :event_name,
+                      :name,
+                      :title,
+                      :company,
+                      :visitor_role,
+                      :source_url,
+                      :source_label,
+                      cast(:evidence as jsonb),
+                      :confidence,
+                      :relevance_reason,
+                      :suggested_angle,
+                      :inferred,
+                      :status,
+                      :converted_capture_id
+                    )
+                    returning *
+                    """
+                ),
+                {
+                    "organization_id": organization_id,
+                    "event_site_deep_dive_id": deep_dive_id,
+                    "event_name": visitor.event_name,
+                    "name": visitor.name,
+                    "title": visitor.title,
+                    "company": visitor.company,
+                    "visitor_role": visitor.visitor_role,
+                    "source_url": visitor.source_url,
+                    "source_label": visitor.source_label,
+                    "evidence": _json(visitor.evidence),
+                    "confidence": visitor.confidence.value,
+                    "relevance_reason": visitor.relevance_reason,
+                    "suggested_angle": visitor.suggested_angle,
+                    "inferred": visitor.inferred,
+                    "status": visitor.status,
+                    "converted_capture_id": (
+                        visitor.converted_capture_id
+                        if _is_uuid(visitor.converted_capture_id)
+                        else None
+                    ),
+                },
+            )
+        ).mappings().one()
+        return _event_site_visitor_from_row(row)
 
     async def _insert_social_candidate(
         self,
@@ -2667,6 +2920,33 @@ def _event_draft_from_row(row) -> EventOutreachDraft:
         subject=row["subject"],
         body=row["body"],
         inferred_claims_used=row["inferred_claims_used"],
+        created_at=row["created_at"],
+    )
+
+
+def _event_site_visitor_from_row(row) -> EventSiteVisitor:
+    return EventSiteVisitor(
+        id=str(row["id"]),
+        organization_id=str(row["organization_id"]),
+        deep_dive_id=str(row["event_site_deep_dive_id"])
+        if row["event_site_deep_dive_id"]
+        else None,
+        event_name=row["event_name"],
+        name=row["name"],
+        title=row["title"],
+        company=row["company"],
+        visitor_role=row["visitor_role"],
+        source_url=row["source_url"],
+        source_label=row["source_label"],
+        evidence=_parse_json(row["evidence"], []),
+        confidence=row["confidence"],
+        relevance_reason=row["relevance_reason"],
+        suggested_angle=row["suggested_angle"],
+        inferred=row["inferred"],
+        status=row["status"],
+        converted_capture_id=str(row["converted_capture_id"])
+        if row["converted_capture_id"]
+        else None,
         created_at=row["created_at"],
     )
 
