@@ -84,6 +84,25 @@ export function listEvents() {
   return request("/api/events");
 }
 
+export function deepDiveEventSite(payload) {
+  return request("/api/events/deep-dive", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function listEventSiteVisitors(eventName) {
+  const suffix = eventName ? `?event_name=${encodeURIComponent(eventName)}` : "";
+  return request(`/api/events/site-visitors${suffix}`);
+}
+
+export function convertEventSiteVisitor(visitorId, payload = {}) {
+  return request(`/api/events/site-visitors/${visitorId}/convert`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export function discoverSocialIntent(payload) {
   return request("/api/social/discover", {
     method: "POST",
