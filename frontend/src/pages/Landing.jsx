@@ -6,6 +6,9 @@ import {
   Radar,
   ScanLine,
   Building2,
+  CheckCircle2,
+  FolderOpen,
+  Globe2,
   Radio,
   Target,
   PenLine,
@@ -24,6 +27,7 @@ import heroImage from "@/assets/connexted-hero.png";
 
 const NAV_LINKS = [
   { href: "#how", label: "How it works" },
+  { href: "#event-intel", label: "Event intelligence" },
   { href: "#pipeline", label: "The pipeline" },
   { href: "#playbook", label: "Playbook" },
   { href: "#features", label: "Platform" },
@@ -49,13 +53,24 @@ const FLOWS = [
     steps: [
       "Enter an industry, region, date range, personas, verticals, and keywords.",
       "CONNEXTed qualifies events against your Playbook: target personas, priority signals, exclusions, and trusted sources.",
-      "Paste resources, directories, event pages, and source instructions that agents should inspect.",
-      "It surfaces 2–3 public, high-potential people per event — speakers, sponsors, exhibitors, organizers.",
-      "Every pick ships with why it's relevant, the evidence behind it, and a pre-event outreach angle."
+      "Run an event-site deep dive by pasting public speaker, sponsor, exhibitor, organizer, or attendee sections.",
+      "It separates confirmed event-page visitors from prospective social intent and places both into the event folder.",
+      "Every person or company ships with source evidence, confidence, relevance, and a pre-event outreach angle."
     ]
   },
   {
     tag: "Flow 02",
+    title: "Event folder planning",
+    lead: "Turn the event into a working account folder.",
+    steps: [
+      "Use the dashboard to see confirmed visitors, public social prospects, and captured conversations under one event.",
+      "Convert the highest-fit event-site visitors into capture records when a rep wants to pursue them.",
+      "Review folder prep: who to prioritize, what to cover, and which questions should shape meeting outreach.",
+      "Keep source links and public evidence attached so reps can verify before referencing a claim."
+    ]
+  },
+  {
+    tag: "Flow 03",
     title: "Post-conversation capture",
     lead: "Send a card photo. Get a reviewed follow-up.",
     steps: [
@@ -68,6 +83,16 @@ const FLOWS = [
 ];
 
 const PIPELINE = [
+  {
+    icon: CheckCircle2,
+    name: "Visitor confirmation",
+    detail: "Extracts confirmed visitors from public event pages and keeps the original source evidence attached."
+  },
+  {
+    icon: FolderOpen,
+    name: "Event foldering",
+    detail: "Groups confirmed visitors, social prospects, captures, companies, and prep into one event workspace."
+  },
   {
     icon: ScanLine,
     name: "Contact extraction",
@@ -104,7 +129,17 @@ const FEATURES = [
   {
     icon: Radar,
     title: "Event Radar",
-    body: "Industry-relevant events and public prospects discovered before your team arrives."
+    body: "Industry-relevant events, public prospects, and pre-event angles discovered before your team arrives."
+  },
+  {
+    icon: CheckCircle2,
+    title: "Confirmed visitor deep dives",
+    body: "Paste public event-site data to identify speakers, sponsors, exhibitors, organizers, and listed attendees."
+  },
+  {
+    icon: FolderOpen,
+    title: "Event folders",
+    body: "Each event becomes a working folder for confirmed visitors, social intent, captures, prep, and follow-up."
   },
   {
     icon: GitBranch,
@@ -167,7 +202,7 @@ const TRUST = [
 ];
 
 const STATS = [
-  { value: "2–3", label: "Public prospects surfaced per event" },
+  { value: "2", label: "Visitor signal modes: confirmed listings and social intent" },
   { value: "6", label: "Reviewable workflow steps per capture run" },
   { value: "0", label: "Messages sent without human approval" },
   { value: "1", label: "Review surface for evidence, strategy & drafts" }
@@ -196,6 +231,29 @@ const PLAYBOOK_CONTROLS = [
   }
 ];
 
+const EVENT_INTEL = [
+  {
+    icon: CheckCircle2,
+    title: "Confirmed visitors",
+    body: "Paste public speaker, sponsor, exhibitor, organizer, or attendee sections from the event site. CONNEXTed extracts named people and companies, classifies their role, and preserves source evidence."
+  },
+  {
+    icon: Radio,
+    title: "Prospective visitors",
+    body: "Import public social links and visible post text tied to an event. The system labels meeting intent, speaker signals, sponsor activity, and likely attendance separately from confirmed site listings."
+  },
+  {
+    icon: FolderOpen,
+    title: "Event folders",
+    body: "Confirmed visitors, social prospects, WhatsApp captures, companies, and folder prep live under the event name so reps can plan who to meet before and after the show."
+  },
+  {
+    icon: Target,
+    title: "Personalized pursuit",
+    body: "Every visitor inherits your Playbook: products offered, target sectors, priority signals, proof points, trusted sources, and personalization rules."
+  }
+];
+
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
@@ -204,6 +262,7 @@ export default function Landing() {
       <Marquee />
       <Problem />
       <Flows />
+      <EventIntelligence />
       <Pipeline />
       <PlaybookSection />
       <Features />
@@ -260,7 +319,7 @@ function Hero() {
         <div className="flex animate-fade-up items-center gap-3">
           <Badge variant="outline" className="gap-1.5 py-1">
             <span className="h-1.5 w-1.5 rounded-full bg-signal animate-pulse-signal" />
-            WhatsApp-first GTM
+            Event-first GTM
           </Badge>
           <span className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
             Edition 01 — Assisted, not automated
@@ -268,18 +327,18 @@ function Hero() {
         </div>
 
         <h1 className="mt-8 max-w-4xl animate-fade-up font-display text-[clamp(2.75rem,8vw,6.5rem)] font-semibold leading-[0.92] tracking-tightest text-balance">
-          Turn event
+          Turn event signals
           <br />
-          conversations into
+          and conversations into
           <br />
           <span className="italic text-signal">reviewed follow-up.</span>
         </h1>
 
         <p className="mt-8 max-w-xl animate-fade-up text-lg leading-relaxed text-muted-foreground">
-          CONNEXTed is a WhatsApp-first GTM workflow platform. Discover the right events and
-          prospects before you attend — then send a business card and quick notes to get
-          enriched reports, evidence-backed signals, pitch strategy, and outreach drafts ready
-          for your review.
+          CONNEXTed is an event-first GTM workflow platform. Discover relevant events, pull
+          confirmed visitors from public event-site data, import social intent, then capture
+          conversations through WhatsApp to generate enriched reports, pitch strategy, and
+          outreach drafts for human review.
         </p>
 
         <div className="mt-10 flex animate-fade-up flex-wrap items-center gap-4">
@@ -306,10 +365,10 @@ function Hero() {
             <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between px-5 py-4">
               <span className="flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.2em] text-background/85">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-signal" />
-                Fig. 01 — Capture at the moment of conversation
+                Fig. 01 — Plan the room, then capture the conversation
               </span>
               <span className="hidden font-mono text-[0.7rem] uppercase tracking-[0.2em] text-background/60 sm:inline">
-                WhatsApp · Card · CRM
+                Event site · WhatsApp · CRM
               </span>
             </div>
           </div>
@@ -376,8 +435,8 @@ function Problem() {
               handoff is messy.
             </p>
             <p className="leading-relaxed">
-              CONNEXTed makes capture-to-follow-up fast, contextual, and trustworthy — without
-              removing human judgment.
+              CONNEXTed turns event pages, public intent, and in-person conversations into a
+              single reviewed workflow — without removing human judgment.
             </p>
           </div>
         </div>
@@ -392,10 +451,10 @@ function Flows() {
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
         <SectionLabel index="01">How it works</SectionLabel>
         <h2 className="mt-8 max-w-2xl font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
-          Two flows. One reviewed pipeline.
+          Three connected workflows. One reviewed pipeline.
         </h2>
 
-        <div className="mt-14 grid gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-2">
+        <div className="mt-14 grid gap-px overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-3">
           {FLOWS.map((flow) => (
             <div key={flow.title} className="bg-background p-8 md:p-10">
               <div className="flex items-center justify-between">
@@ -425,24 +484,69 @@ function Flows() {
   );
 }
 
+function EventIntelligence() {
+  return (
+    <section id="event-intel" className="border-b border-border bg-secondary/25">
+      <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
+        <SectionLabel index="02">Event intelligence</SectionLabel>
+        <div className="mt-8 grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+          <div>
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-background">
+              <Globe2 className="h-5 w-5" />
+            </div>
+            <h2 className="mt-6 font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
+              See who is confirmed for an event before your team starts outreach.
+            </h2>
+            <p className="mt-5 max-w-md text-muted-foreground">
+              Event pages often reveal the highest-fit people in the room. CONNEXTed lets reps
+              paste public site data, preserve the evidence, and turn the best confirmed
+              visitors into capture records for deeper research.
+            </p>
+            <Button asChild className="mt-8" shape="pill">
+              <Link to="/app/dashboard">
+                Open event folders
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+
+          <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+            {EVENT_INTEL.map((item) => (
+              <div key={item.title} className="bg-background p-7">
+                <item.icon className="h-5 w-5" />
+                <h3 className="mt-5 font-display text-lg font-semibold tracking-tight">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Pipeline() {
   return (
     <section id="pipeline" className="border-b border-border bg-foreground text-background">
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
         <div className="flex items-center gap-3 font-mono text-[0.7rem] uppercase tracking-[0.22em] text-background/50">
-          <span className="text-signal">02</span>
+          <span className="text-signal">03</span>
           <span className="h-px w-8 bg-background/30" />
           The multi-agent pipeline
         </div>
         <h2 className="mt-8 max-w-3xl font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
-          Every capture runs a transparent chain of specialized agents.
+          Every pursued visitor runs through a transparent chain of specialized agents.
         </h2>
         <p className="mt-5 max-w-xl text-background/60">
           Each step is inspectable in the agent trace — inputs, outputs, and rationale — so you
           always know why a recommendation exists.
         </p>
 
-        <div className="mt-16 grid gap-px overflow-hidden rounded-lg border border-background/15 bg-background/15 md:grid-cols-5">
+        <div className="mt-16 grid gap-px overflow-hidden rounded-lg border border-background/15 bg-background/15 md:grid-cols-3 lg:grid-cols-7">
           {PIPELINE.map((step, i) => (
             <div
               key={step.name}
@@ -470,7 +574,7 @@ function PlaybookSection() {
   return (
     <section id="playbook" className="border-b border-border">
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
-        <SectionLabel index="03">Directed research</SectionLabel>
+        <SectionLabel index="04">Directed research</SectionLabel>
         <div className="mt-8 grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
             <h2 className="font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
@@ -512,7 +616,7 @@ function Features() {
   return (
     <section id="features" className="border-b border-border">
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
-        <SectionLabel index="04">The platform</SectionLabel>
+        <SectionLabel index="05">The platform</SectionLabel>
         <div className="mt-8 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <h2 className="max-w-2xl font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
             Everything between the handshake and the handoff.
@@ -548,7 +652,7 @@ function Trust() {
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
         <div className="grid gap-12 md:grid-cols-[1fr_1.2fr] md:gap-20">
           <div>
-            <SectionLabel index="05">Trust & review model</SectionLabel>
+            <SectionLabel index="06">Trust & review model</SectionLabel>
             <h2 className="mt-8 font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
               Assisted GTM execution. Never blind automation.
             </h2>
@@ -594,7 +698,8 @@ function CtaBand() {
           Ready when you are
         </span>
         <h2 className="mx-auto mt-6 max-w-3xl font-display text-[clamp(2.25rem,6vw,4.5rem)] font-semibold leading-[0.98] tracking-tightest text-balance">
-          Capture the conversation. <span className="italic text-signal">Keep the judgment.</span>
+          Know the room. Capture the conversation.{" "}
+          <span className="italic text-signal">Keep the judgment.</span>
         </h2>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Button asChild size="lg" shape="pill" variant="accent" className="glow-signal">
@@ -637,7 +742,7 @@ function SiteFooter() {
       </div>
       <p className="mt-8 flex items-center gap-2 border-t border-border pt-8 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
         <span className="h-1.5 w-1.5 bg-signal" aria-hidden="true" />
-        CONNEXTed — WhatsApp-first GTM intelligence · Human-reviewed outreach
+        CONNEXTed — Event-first GTM intelligence · Human-reviewed outreach
       </p>
     </footer>
   );
