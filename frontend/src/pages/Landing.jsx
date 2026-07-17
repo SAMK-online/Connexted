@@ -290,6 +290,12 @@ function SiteNav() {
               {link.label}
             </a>
           ))}
+          <Link
+            to="/docs"
+            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Docs
+          </Link>
         </nav>
         <div className="flex items-center gap-3">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
@@ -732,6 +738,12 @@ function SiteFooter() {
               {link.label}
             </a>
           ))}
+          <Link
+            to="/docs"
+            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Docs
+          </Link>
           <Link
             to="/app"
             className="text-sm text-muted-foreground transition-colors hover:text-foreground"

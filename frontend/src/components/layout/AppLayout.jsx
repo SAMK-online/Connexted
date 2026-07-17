@@ -1,6 +1,7 @@
 import { NavLink, Outlet, Link } from "react-router-dom";
 import {
   BookOpen,
+  FileText,
   FolderOpen,
   Radar,
   Inbox,
@@ -16,6 +17,7 @@ const NAV = [
   { to: "/app/dashboard", label: "Dashboard", icon: FolderOpen, end: false },
   { to: "/app/events", label: "Event Radar", icon: Radar, end: false },
   { to: "/app/playbook", label: "Playbook", icon: BookOpen, end: false },
+  { to: "/app/docs", label: "Docs", icon: FileText, end: false },
   { to: "/app/settings", label: "Settings", icon: Settings2, end: false }
 ];
 
