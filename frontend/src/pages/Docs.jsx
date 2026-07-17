@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-const FEATURE_DOCS = [
+export const FEATURE_DOCS = [
   {
     id: "event-radar",
     icon: Radar,
@@ -217,7 +217,7 @@ const FEATURE_DOCS = [
   }
 ];
 
-const WORKFLOW_EXAMPLES = [
+export const WORKFLOW_EXAMPLES = [
   {
     title: "Before an event",
     icon: Search,
@@ -297,6 +297,8 @@ const GUARDRAILS = [
 ];
 
 export default function Docs({ standalone = false }) {
+  const selectorPath = standalone ? "/docs" : "/app/docs";
+
   return (
     <div className={standalone ? "min-h-screen bg-background" : ""}>
       {standalone ? <DocsNav /> : null}
@@ -305,7 +307,14 @@ export default function Docs({ standalone = false }) {
           eyebrow="Docs"
           title="CONNEXTed product docs"
           subtitle="Feature-level guidance, examples, and operating patterns for using CONNEXTed effectively before, during, and after events."
-          action={<Badge variant="outline">Feature guide</Badge>}
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">Feature guide</Badge>
+              <Button asChild variant="outline" size="sm">
+                <Link to={selectorPath}>Docs index</Link>
+              </Button>
+            </div>
+          }
         />
 
         <QuickStart />
@@ -328,6 +337,9 @@ function DocsNav() {
         <div className="flex items-center gap-3">
           <Button asChild variant="ghost" size="sm">
             <Link to="/">Home</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/docs">Docs index</Link>
           </Button>
           <Button asChild size="sm" shape="pill" variant="accent">
             <Link to="/app">
@@ -402,7 +414,7 @@ function QuickStart() {
 
 function FeatureIndex() {
   return (
-    <section className="mt-10">
+    <section id="feature-docs" className="mt-10">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
@@ -488,7 +500,7 @@ function FeatureDoc({ doc }) {
 
 function WorkflowExamples() {
   return (
-    <section className="mt-10">
+    <section id="workflows" className="mt-10">
       <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
         Workflow examples
       </p>
@@ -522,7 +534,7 @@ function WorkflowExamples() {
 
 function PlaybookExamples() {
   return (
-    <section className="mt-10">
+    <section id="playbook-examples" className="mt-10">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
@@ -568,7 +580,10 @@ function PlaybookExamples() {
 
 function Guardrails() {
   return (
-    <section className="mt-10 rounded-lg border border-border bg-foreground p-6 text-background">
+    <section
+      id="guardrails"
+      className="mt-10 rounded-lg border border-border bg-foreground p-6 text-background"
+    >
       <div className="flex items-center gap-3">
         <ShieldCheck className="h-5 w-5 text-signal" />
         <h2 className="font-display text-2xl font-semibold tracking-tight">

@@ -4,6 +4,7 @@ import AppLayout from "./components/layout/AppLayout.jsx";
 import Captures from "./pages/Captures.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Docs from "./pages/Docs.jsx";
+import DocsSelector from "./pages/DocsSelector.jsx";
 import EventRadar from "./pages/EventRadar.jsx";
 import Playbook from "./pages/Playbook.jsx";
 import Report from "./pages/Report.jsx";
@@ -13,13 +14,15 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/docs" element={<Docs standalone />} />
+      <Route path="/docs" element={<DocsSelector standalone />} />
+      <Route path="/docs/guide" element={<Docs standalone />} />
       <Route path="/app" element={<AppLayout />}>
         <Route index element={<Captures />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="events" element={<EventRadar />} />
         <Route path="playbook" element={<Playbook />} />
-        <Route path="docs" element={<Docs />} />
+        <Route path="docs" element={<DocsSelector />} />
+        <Route path="docs/guide" element={<Docs />} />
         <Route path="captures/:captureId" element={<Report />} />
         <Route path="settings" element={<Settings />} />
       </Route>
