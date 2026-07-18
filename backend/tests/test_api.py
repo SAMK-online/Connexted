@@ -11,8 +11,26 @@ from app.schemas import CaptureRead, Contact
 def make_client(monkeypatch) -> TestClient:
     monkeypatch.setenv("PERSISTENCE_BACKEND", "memory")
     monkeypatch.setenv("MOCK_PROVIDERS", "true")
+    monkeypatch.setenv("API_AUTH_TOKEN", "")
     get_settings.cache_clear()
     return TestClient(create_app())
+
+
+def test_api_auth_token_enforced_when_configured(monkeypatch):
+    monkeypatch.setenv("PERSISTENCE_BACKEND", "memory")
+    monkeypatch.setenv("MOCK_PROVIDERS", "true")
+    monkeypatch.setenv("API_AUTH_TOKEN", "pilot-secret")
+    get_settings.cache_clear()
+    with TestClient(create_app()) as client:
+        # Health stays open for load balancer checks; /api/* requires the token.
+        assert client.get("/health").status_code == 200
+        assert client.get("/api/captures").status_code == 401
+        bearer = client.get("/api/captures", headers={"Authorization": "Bearer pilot-secret"})
+        assert bearer.status_code == 200
+        api_key = client.get("/api/captures", headers={"X-API-Key": "pilot-secret"})
+        assert api_key.status_code == 200
+        wrong = client.get("/api/captures", headers={"Authorization": "Bearer wrong"})
+        assert wrong.status_code == 401
 
 
 def test_capture_workflow_generates_review_ready_report(monkeypatch):
@@ -459,3 +477,142 @@ def test_admin_settings_update_playbook_and_style_profile(monkeypatch):
         assert updated_profile.status_code == 200
         assert updated_profile.json()["tone"] == "plainspoken and specific"
         assert updated_profile.json()["banned_phrases"] == ["circling back"]
+
+
+def _auth_client(monkeypatch, auth_required="true") -> TestClient:
+    monkeypatch.setenv("PERSISTENCE_BACKEND", "memory")
+    monkeypatch.setenv("MOCK_PROVIDERS", "true")
+    monkeypatch.setenv("API_AUTH_TOKEN", "")
+    monkeypatch.setenv("AUTH_REQUIRED", auth_required)
+    monkeypatch.setenv("AUTH_JWT_SECRET", "test-jwt-secret")
+    get_settings.cache_clear()
+    return TestClient(create_app())
+
+
+def test_enterprise_registration_login_and_employee_join(monkeypatch):
+    with _auth_client(monkeypatch) as client:
+        # Unauthenticated access is rejected when auth is required.
+        assert client.get("/api/captures").status_code == 401
+
+        # Enterprise registration creates the org + admin account.
+        registered = client.post(
+            "/api/auth/register",
+            json={
+                "organization_name": "Acme GTM",
+                "name": "Grace Hopper",
+                "email": "grace@acme.test",
+                "password": "correct-horse-9",
+            },
+        )
+        assert registered.status_code == 200
+        admin = registered.json()
+        assert admin["user"]["role"] == "admin"
+        assert admin["user"]["organization_name"] == "Acme GTM"
+        admin_headers = {"Authorization": f"Bearer {admin['token']}"}
+
+        # Duplicate email is rejected.
+        duplicate = client.post(
+            "/api/auth/register",
+            json={
+                "organization_name": "Other Co",
+                "name": "Grace Hopper",
+                "email": "grace@acme.test",
+                "password": "correct-horse-9",
+            },
+        )
+        assert duplicate.status_code == 409
+
+        # Login works; wrong password rejected.
+        assert (
+            client.post(
+                "/api/auth/login",
+                json={"email": "grace@acme.test", "password": "correct-horse-9"},
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                "/api/auth/login",
+                json={"email": "grace@acme.test", "password": "wrong"},
+            ).status_code
+            == 401
+        )
+
+        # /me resolves the session.
+        me = client.get("/api/auth/me", headers=admin_headers)
+        assert me.status_code == 200
+        assert me.json()["email"] == "grace@acme.test"
+
+        # Admin issues an invite; employee joins with it and gets rep role.
+        invite = client.post("/api/auth/invite", headers=admin_headers)
+        assert invite.status_code == 200
+        code = invite.json()["code"]
+
+        joined = client.post(
+            "/api/auth/join",
+            json={
+                "invite_code": code,
+                "name": "Ada Lovelace",
+                "email": "ada@acme.test",
+                "password": "analytical-engine-1",
+            },
+        )
+        assert joined.status_code == 200
+        employee = joined.json()
+        assert employee["user"]["role"] == "rep"
+        assert employee["user"]["organization_id"] == admin["user"]["organization_id"]
+        employee_headers = {"Authorization": f"Bearer {employee['token']}"}
+
+        # Employees cannot mint invites.
+        assert client.post("/api/auth/invite", headers=employee_headers).status_code == 403
+
+        # Bad invite codes are rejected.
+        assert (
+            client.post(
+                "/api/auth/join",
+                json={
+                    "invite_code": "JOIN-NOPE0000",
+                    "name": "X",
+                    "email": "x@acme.test",
+                    "password": "password-123",
+                },
+            ).status_code
+            == 400
+        )
+
+
+def test_captures_are_scoped_to_the_users_organization(monkeypatch):
+    with _auth_client(monkeypatch) as client:
+        def register(org, email):
+            response = client.post(
+                "/api/auth/register",
+                json={
+                    "organization_name": org,
+                    "name": "Admin",
+                    "email": email,
+                    "password": "password-123",
+                },
+            )
+            body = response.json()
+            return {"Authorization": f"Bearer {body['token']}"}, body["user"]
+
+        acme_headers, acme_admin = register("Acme", "admin@acme.test")
+        rival_headers, _ = register("Rival", "admin@rival.test")
+
+        created = client.post(
+            "/api/captures",
+            headers=acme_headers,
+            json={"source": "web", "prospect_name": "Ada", "raw_text": "Ada\nada@x.com"},
+        )
+        assert created.status_code == 200
+        capture = created.json()
+        # Capture is stamped with the signed-in user's org, not the demo default.
+        assert capture["organization_id"] == acme_admin["organization_id"]
+
+        # Owner org sees it; the other org does not — by list or by id.
+        assert len(client.get("/api/captures", headers=acme_headers).json()) == 1
+        assert client.get("/api/captures", headers=rival_headers).json() == []
+        assert (
+            client.get(f"/api/captures/{capture['id']}", headers=rival_headers).status_code
+            == 404
+        )

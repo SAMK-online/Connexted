@@ -88,7 +88,7 @@ class AppStore(Protocol):
 
     async def create_capture(self, payload: CaptureCreate) -> CaptureRead: ...
 
-    async def list_captures(self) -> list[CaptureRead]: ...
+    async def list_captures(self, organization_id: str | None = None) -> list[CaptureRead]: ...
 
     async def get_capture(self, capture_id: str) -> CaptureRead | None: ...
 
@@ -139,6 +139,22 @@ class AppStore(Protocol):
     async def update_crm_connection_tokens(
         self, connection_id: str, encrypted_token_ref: str
     ) -> None: ...
+
+    async def get_auth_user_by_email(self, email: str) -> dict | None: ...
+
+    async def get_auth_user(self, user_id: str) -> dict | None: ...
+
+    async def create_organization_account(
+        self, organization_name: str, name: str, email: str, password_hash: str
+    ) -> dict: ...
+
+    async def create_team_member(
+        self, organization_id: str, name: str, email: str, password_hash: str, role: str = "rep"
+    ) -> dict: ...
+
+    async def create_org_invite(self, organization_id: str, created_by: str | None) -> dict: ...
+
+    async def get_org_invite(self, code: str) -> dict | None: ...
 
     async def save_event_discovery(self, discovery: EventDiscoveryRead) -> EventDiscoveryRead: ...
 
@@ -223,6 +239,10 @@ class InMemoryStore:
         self.style_profiles: dict[str, StyleProfile] = {
             "default-style": StyleProfile(id="default-style", **DEFAULT_STYLE_PROFILE_DATA)
         }
+        self.auth_users: dict[str, dict] = {}
+        self.auth_email_index: dict[str, str] = {}
+        self.auth_orgs: dict[str, dict] = {}
+        self.org_invites: dict[str, dict] = {}
 
     async def close(self) -> None:
         return None
@@ -238,8 +258,11 @@ class InMemoryStore:
         self.dedupe_index[dedupe_key] = capture.id
         return capture
 
-    async def list_captures(self) -> list[CaptureRead]:
-        return sorted(self.captures.values(), key=lambda item: item.created_at, reverse=True)
+    async def list_captures(self, organization_id: str | None = None) -> list[CaptureRead]:
+        captures = self.captures.values()
+        if organization_id:
+            captures = [c for c in captures if c.organization_id == organization_id]
+        return sorted(captures, key=lambda item: item.created_at, reverse=True)
 
     async def get_capture(self, capture_id: str) -> CaptureRead | None:
         return self.captures.get(capture_id)
@@ -402,6 +425,63 @@ class InMemoryStore:
                 connection["encrypted_token_ref"] = encrypted_token_ref
                 connection["updated_at"] = datetime.now(UTC)
                 return
+
+    def _auth_user_read(self, user: dict) -> dict:
+        org = self.auth_orgs.get(user["organization_id"], {})
+        return {**user, "organization_name": org.get("name", "")}
+
+    async def get_auth_user_by_email(self, email: str) -> dict | None:
+        user_id = self.auth_email_index.get(email.strip().lower())
+        return self._auth_user_read(self.auth_users[user_id]) if user_id else None
+
+    async def get_auth_user(self, user_id: str) -> dict | None:
+        user = self.auth_users.get(user_id)
+        return self._auth_user_read(user) if user else None
+
+    async def create_organization_account(
+        self, organization_name: str, name: str, email: str, password_hash: str
+    ) -> dict:
+        org = {"id": new_id("org"), "name": organization_name}
+        self.auth_orgs[org["id"]] = org
+        return await self.create_team_member(org["id"], name, email, password_hash, role="admin")
+
+    async def create_team_member(
+        self, organization_id: str, name: str, email: str, password_hash: str, role: str = "rep"
+    ) -> dict:
+        normalized = email.strip().lower()
+        user = {
+            "id": new_id("user"),
+            "organization_id": organization_id,
+            "name": name,
+            "email": normalized,
+            "password_hash": password_hash,
+            "role": role,
+            "created_at": datetime.now(UTC),
+        }
+        self.auth_users[user["id"]] = user
+        self.auth_email_index[normalized] = user["id"]
+        return self._auth_user_read(user)
+
+    async def create_org_invite(self, organization_id: str, created_by: str | None) -> dict:
+        from app.security import generate_invite_code
+
+        # A fresh code deactivates earlier ones for the organization.
+        for invite in self.org_invites.values():
+            if invite["organization_id"] == organization_id:
+                invite["active"] = False
+        invite = {
+            "code": generate_invite_code(),
+            "organization_id": organization_id,
+            "created_by": created_by,
+            "active": True,
+            "created_at": datetime.now(UTC),
+        }
+        self.org_invites[invite["code"]] = invite
+        return invite
+
+    async def get_org_invite(self, code: str) -> dict | None:
+        invite = self.org_invites.get(code.strip().upper())
+        return invite if invite and invite["active"] else None
 
     async def save_event_discovery(self, discovery: EventDiscoveryRead) -> EventDiscoveryRead:
         self.event_discoveries[discovery.id] = discovery
@@ -637,20 +717,36 @@ class PostgresStore:
 
             return await self._capture_from_row(conn, row)
 
-    async def list_captures(self) -> list[CaptureRead]:
+    async def list_captures(self, organization_id: str | None = None) -> list[CaptureRead]:
         async with self.engine.connect() as conn:
-            rows = (
-                await conn.execute(
-                    text(
-                        """
-                        select *
-                        from public.captures
-                        where deleted_at is null
-                        order by created_at desc
-                        """
+            if organization_id and _is_uuid(organization_id):
+                rows = (
+                    await conn.execute(
+                        text(
+                            """
+                            select *
+                            from public.captures
+                            where deleted_at is null
+                              and organization_id = :organization_id
+                            order by created_at desc
+                            """
+                        ),
+                        {"organization_id": organization_id},
                     )
-                )
-            ).mappings().all()
+                ).mappings().all()
+            else:
+                rows = (
+                    await conn.execute(
+                        text(
+                            """
+                            select *
+                            from public.captures
+                            where deleted_at is null
+                            order by created_at desc
+                            """
+                        )
+                    )
+                ).mappings().all()
             return [await self._capture_from_row(conn, row) for row in rows]
 
     async def get_capture(self, capture_id: str) -> CaptureRead | None:
@@ -1479,6 +1575,184 @@ class PostgresStore:
                 ),
                 {"connection_id": connection_id, "encrypted_token_ref": encrypted_token_ref},
             )
+
+    @staticmethod
+    def _auth_user_from_row(row) -> dict:
+        return {
+            "id": str(row["id"]),
+            "organization_id": str(row["organization_id"]),
+            "name": row["name"],
+            "email": row["email"],
+            "password_hash": row["password_hash"],
+            "role": row["role"],
+            "created_at": row["created_at"],
+            "organization_name": row["organization_name"],
+        }
+
+    async def get_auth_user_by_email(self, email: str) -> dict | None:
+        async with self.engine.connect() as conn:
+            row = (
+                await conn.execute(
+                    text(
+                        """
+                        select u.*, o.name as organization_name
+                        from public.app_users u
+                        join public.organizations o on o.id = u.organization_id
+                        where u.email = :email
+                        """
+                    ),
+                    {"email": email.strip().lower()},
+                )
+            ).mappings().first()
+            return self._auth_user_from_row(row) if row else None
+
+    async def get_auth_user(self, user_id: str) -> dict | None:
+        if not _is_uuid(user_id):
+            return None
+        async with self.engine.connect() as conn:
+            row = (
+                await conn.execute(
+                    text(
+                        """
+                        select u.*, o.name as organization_name
+                        from public.app_users u
+                        join public.organizations o on o.id = u.organization_id
+                        where u.id = :user_id
+                        """
+                    ),
+                    {"user_id": user_id},
+                )
+            ).mappings().first()
+            return self._auth_user_from_row(row) if row else None
+
+    async def create_organization_account(
+        self, organization_name: str, name: str, email: str, password_hash: str
+    ) -> dict:
+        async with self.engine.begin() as conn:
+            org_row = (
+                await conn.execute(
+                    text(
+                        """
+                        insert into public.organizations (name)
+                        values (:name)
+                        returning id
+                        """
+                    ),
+                    {"name": organization_name},
+                )
+            ).mappings().one()
+            row = (
+                await conn.execute(
+                    text(
+                        """
+                        insert into public.app_users (
+                          organization_id, name, email, password_hash, role
+                        )
+                        values (:organization_id, :name, :email, :password_hash, 'admin')
+                        returning *, :organization_name as organization_name
+                        """
+                    ),
+                    {
+                        "organization_id": str(org_row["id"]),
+                        "name": name,
+                        "email": email.strip().lower(),
+                        "password_hash": password_hash,
+                        "organization_name": organization_name,
+                    },
+                )
+            ).mappings().one()
+            return self._auth_user_from_row(row)
+
+    async def create_team_member(
+        self, organization_id: str, name: str, email: str, password_hash: str, role: str = "rep"
+    ) -> dict:
+        async with self.engine.begin() as conn:
+            row = (
+                await conn.execute(
+                    text(
+                        """
+                        insert into public.app_users (
+                          organization_id, name, email, password_hash, role
+                        )
+                        values (:organization_id, :name, :email, :password_hash, :role)
+                        returning *,
+                          (select name from public.organizations where id = :organization_id)
+                            as organization_name
+                        """
+                    ),
+                    {
+                        "organization_id": organization_id,
+                        "name": name,
+                        "email": email.strip().lower(),
+                        "password_hash": password_hash,
+                        "role": role,
+                    },
+                )
+            ).mappings().one()
+            return self._auth_user_from_row(row)
+
+    async def create_org_invite(self, organization_id: str, created_by: str | None) -> dict:
+        from app.security import generate_invite_code
+
+        code = generate_invite_code()
+        async with self.engine.begin() as conn:
+            await conn.execute(
+                text(
+                    """
+                    update public.org_invites
+                    set active = false
+                    where organization_id = :organization_id
+                    """
+                ),
+                {"organization_id": organization_id},
+            )
+            row = (
+                await conn.execute(
+                    text(
+                        """
+                        insert into public.org_invites (organization_id, code, created_by)
+                        values (:organization_id, :code, :created_by)
+                        returning *
+                        """
+                    ),
+                    {
+                        "organization_id": organization_id,
+                        "code": code,
+                        "created_by": created_by if _is_uuid(created_by) else None,
+                    },
+                )
+            ).mappings().one()
+            return {
+                "code": row["code"],
+                "organization_id": str(row["organization_id"]),
+                "created_by": str(row["created_by"]) if row["created_by"] else None,
+                "active": row["active"],
+                "created_at": row["created_at"],
+            }
+
+    async def get_org_invite(self, code: str) -> dict | None:
+        async with self.engine.connect() as conn:
+            row = (
+                await conn.execute(
+                    text(
+                        """
+                        select *
+                        from public.org_invites
+                        where code = :code and active = true
+                        """
+                    ),
+                    {"code": code.strip().upper()},
+                )
+            ).mappings().first()
+            if not row:
+                return None
+            return {
+                "code": row["code"],
+                "organization_id": str(row["organization_id"]),
+                "created_by": str(row["created_by"]) if row["created_by"] else None,
+                "active": row["active"],
+                "created_at": row["created_at"],
+            }
 
     async def save_event_discovery(self, discovery: EventDiscoveryRead) -> EventDiscoveryRead:
         async with self.engine.begin() as conn:

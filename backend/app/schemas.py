@@ -471,3 +471,55 @@ class SocialIntentDiscoveryRead(BaseModel):
 class SocialCandidateConvertRequest(BaseModel):
     rep_id: str = "demo-rep"
     notes: str | None = None
+
+
+# --- Auth (enterprise registration + employee login) ---------------------
+
+
+class UserRole(StrEnum):
+    ADMIN = "admin"
+    MANAGER = "manager"
+    REP = "rep"
+
+
+class RegisterOrganizationRequest(BaseModel):
+    organization_name: str = Field(min_length=2, max_length=120)
+    name: str = Field(min_length=1, max_length=120)
+    email: str = Field(min_length=3, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    password: str = Field(min_length=8, max_length=128)
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class JoinTeamRequest(BaseModel):
+    invite_code: str = Field(min_length=4, max_length=40)
+    name: str = Field(min_length=1, max_length=120)
+    email: str = Field(min_length=3, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    password: str = Field(min_length=8, max_length=128)
+
+
+class AuthUser(BaseModel):
+    id: str
+    name: str
+    email: str
+    role: UserRole
+    organization_id: str
+    organization_name: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user: AuthUser
+
+
+class InviteCodeRead(BaseModel):
+    code: str
+    organization_id: str
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class AuthConfig(BaseModel):
+    auth_required: bool

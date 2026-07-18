@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:5173"
     mock_providers: bool = True
     persistence_backend: str = "memory"
+    # Shared-secret token for /api/* endpoints. Empty/unset disables auth (local mock mode).
+    api_auth_token: str | None = None
+    # User auth (enterprise registration + employee login). When auth_required is
+    # true, /api/* needs a valid user session JWT (or the legacy shared token).
+    auth_required: bool = False
+    auth_jwt_secret: str | None = None
+    auth_token_ttl_hours: int = 72
 
     supabase_url: str | None = None
     supabase_anon_key: str | None = None
