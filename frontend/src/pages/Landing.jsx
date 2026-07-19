@@ -24,6 +24,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import HeroCanvas from "@/components/HeroCanvas";
 import heroImage from "@/assets/connexted-hero.png";
+import { Reveal } from "@/components/fx/Reveal";
+import { NumberTicker } from "@/components/fx/NumberTicker";
+import { SpotlightCard } from "@/components/fx/SpotlightCard";
+import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "#how", label: "How it works" },
@@ -120,11 +124,14 @@ const PIPELINE = [
   }
 ];
 
+// `featured` cells span two columns in the bento grid; four of them pad the
+// 14 features to an exact 18 cells (6 clean rows of 3).
 const FEATURES = [
   {
     icon: MessageSquareText,
     title: "WhatsApp-first intake",
-    body: "Capture leads at the moment of conversation — a photo and a few notes is all it takes."
+    body: "Capture leads at the moment of conversation — a photo and a few notes is all it takes.",
+    featured: true
   },
   {
     icon: Radar,
@@ -144,7 +151,8 @@ const FEATURES = [
   {
     icon: GitBranch,
     title: "Multi-agent workflow",
-    body: "A transparent chain of specialized agents, each step reviewable in the agent trace."
+    body: "A transparent chain of specialized agents, each step reviewable in the agent trace.",
+    featured: true
   },
   {
     icon: Building2,
@@ -169,7 +177,8 @@ const FEATURES = [
   {
     icon: ShieldCheck,
     title: "Human review controls",
-    body: "Nothing leaves the building without approval. Outreach, CRM sync, and exports are gated."
+    body: "Nothing leaves the building without approval. Outreach, CRM sync, and exports are gated.",
+    featured: true
   },
   {
     icon: RefreshCw,
@@ -189,7 +198,8 @@ const FEATURES = [
   {
     icon: Sparkles,
     title: "Vector memory",
-    body: "Supabase-backed memory keeps recommendations grounded in your team's history."
+    body: "Supabase-backed memory keeps recommendations grounded in your team's history.",
+    featured: true
   }
 ];
 
@@ -299,7 +309,7 @@ function SiteNav() {
         </nav>
         <div className="flex items-center gap-3">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-            <Link to="/app">Sign in</Link>
+            <Link to="/login">Sign in</Link>
           </Button>
           <Button asChild size="sm" shape="pill" variant="accent">
             <Link to="/app">
@@ -337,7 +347,7 @@ function Hero() {
           <br />
           and conversations into
           <br />
-          <span className="italic text-signal">reviewed follow-up.</span>
+          <span className="text-shimmer italic">reviewed follow-up.</span>
         </h1>
 
         <p className="mt-8 max-w-xl animate-fade-up text-lg leading-relaxed text-muted-foreground">
@@ -359,8 +369,12 @@ function Hero() {
           </Button>
         </div>
 
-        <figure className="group mt-16 animate-fade-up overflow-hidden rounded-lg border border-border bg-foreground">
-          <div className="relative">
+        <figure className="group relative mt-16 animate-fade-up overflow-hidden rounded-lg bg-border p-px">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[220%] -translate-x-1/2 -translate-y-1/2 animate-spin-beam bg-[conic-gradient(from_0deg,transparent_0deg,transparent_310deg,hsl(var(--signal))_335deg,transparent_360deg)]"
+          />
+          <div className="relative overflow-hidden rounded-[calc(0.5rem-1px)] bg-foreground">
             <img
               src={heroImage}
               alt="A rep on an event floor capturing a business card and WhatsApp conversation, with the CONNEXTed dashboard open on a laptop"
@@ -384,7 +398,7 @@ function Hero() {
           {STATS.map((stat) => (
             <div key={stat.label}>
               <dt className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
-                {stat.value}
+                <NumberTicker value={stat.value} />
               </dt>
               <dd className="mt-2 text-sm leading-snug text-muted-foreground">{stat.label}</dd>
             </div>
@@ -399,7 +413,7 @@ function Marquee() {
   const items = [...MARQUEE, ...MARQUEE];
   return (
     <section className="overflow-hidden border-b border-border bg-secondary/40 py-4">
-      <div className="flex w-max animate-marquee items-center gap-10 whitespace-nowrap">
+      <div className="flex w-max animate-marquee items-center gap-10 whitespace-nowrap hover:[animation-play-state:paused]">
         {items.map((item, i) => (
           <span
             key={`${item}-${i}`}
@@ -426,15 +440,20 @@ function SectionLabel({ index, children }) {
 
 function Problem() {
   return (
-    <section className="border-b border-border">
-      <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
-        <SectionLabel index="00">The problem</SectionLabel>
+    <section className="relative border-b border-border">
+      <div className="pointer-events-none absolute inset-0 bg-hatch [mask-image:linear-gradient(to_right,black,transparent_55%)]" />
+      <div className="relative mx-auto max-w-[1200px] px-6 py-20 md:py-28">
+        <Reveal>
+          <SectionLabel index="00">The problem</SectionLabel>
+        </Reveal>
         <div className="mt-8 grid gap-12 md:grid-cols-[1.4fr_1fr] md:gap-16">
-          <h2 className="font-display text-[clamp(1.9rem,4.5vw,3.4rem)] font-semibold leading-[1.05] tracking-tight text-balance">
-            Promising conversations stay trapped in notebooks, badge scans, camera rolls, and
-            scattered CRM notes.
-          </h2>
-          <div className="flex flex-col justify-end gap-5 text-muted-foreground">
+          <Reveal delay={80}>
+            <h2 className="font-display text-[clamp(1.9rem,4.5vw,3.4rem)] font-semibold leading-[1.05] tracking-tight text-balance">
+              Promising conversations stay trapped in notebooks, badge scans, camera rolls, and
+              scattered CRM notes.
+            </h2>
+          </Reveal>
+          <Reveal delay={180} className="flex flex-col justify-end gap-5 text-muted-foreground">
             <p className="leading-relaxed">
               Sales and partnership teams lose momentum in the gap between a great conversation
               and a considered follow-up. The context fades, the notes go stale, and the CRM
@@ -444,7 +463,7 @@ function Problem() {
               CONNEXTed turns event pages, public intent, and in-person conversations into a
               single reviewed workflow — without removing human judgment.
             </p>
-          </div>
+          </Reveal>
         </div>
       </div>
     </section>
@@ -455,14 +474,16 @@ function Flows() {
   return (
     <section id="how" className="border-b border-border">
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
-        <SectionLabel index="01">How it works</SectionLabel>
-        <h2 className="mt-8 max-w-2xl font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
-          Three connected workflows. One reviewed pipeline.
-        </h2>
+        <Reveal>
+          <SectionLabel index="01">How it works</SectionLabel>
+          <h2 className="mt-8 max-w-2xl font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
+            Three connected workflows. One reviewed pipeline.
+          </h2>
+        </Reveal>
 
         <div className="mt-14 grid gap-px overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-3">
-          {FLOWS.map((flow) => (
-            <div key={flow.title} className="bg-background p-8 md:p-10">
+          {FLOWS.map((flow, flowIndex) => (
+            <Reveal key={flow.title} delay={flowIndex * 110} className="h-full bg-background p-8 md:p-10">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
                   {flow.tag}
@@ -482,7 +503,7 @@ function Flows() {
                   </li>
                 ))}
               </ol>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -492,11 +513,14 @@ function Flows() {
 
 function EventIntelligence() {
   return (
-    <section id="event-intel" className="border-b border-border bg-secondary/25">
-      <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
-        <SectionLabel index="02">Event intelligence</SectionLabel>
+    <section id="event-intel" className="relative border-b border-border bg-secondary/25">
+      <div className="pointer-events-none absolute inset-0 bg-dots [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_65%)]" />
+      <div className="relative mx-auto max-w-[1200px] px-6 py-20 md:py-28">
+        <Reveal>
+          <SectionLabel index="02">Event intelligence</SectionLabel>
+        </Reveal>
         <div className="mt-8 grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-          <div>
+          <Reveal delay={80}>
             <div className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-background">
               <Globe2 className="h-5 w-5" />
             </div>
@@ -514,11 +538,11 @@ function EventIntelligence() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-          </div>
+          </Reveal>
 
-          <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+          <Reveal delay={160} className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
             {EVENT_INTEL.map((item) => (
-              <div key={item.title} className="bg-background p-7">
+              <SpotlightCard key={item.title} className="bg-background p-7">
                 <item.icon className="h-5 w-5" />
                 <h3 className="mt-5 font-display text-lg font-semibold tracking-tight">
                   {item.title}
@@ -526,9 +550,9 @@ function EventIntelligence() {
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {item.body}
                 </p>
-              </div>
+              </SpotlightCard>
             ))}
-          </div>
+          </Reveal>
         </div>
       </div>
     </section>
@@ -539,36 +563,42 @@ function Pipeline() {
   return (
     <section id="pipeline" className="border-b border-border bg-foreground text-background">
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
-        <div className="flex items-center gap-3 font-mono text-[0.7rem] uppercase tracking-[0.22em] text-background/50">
-          <span className="text-signal">03</span>
-          <span className="h-px w-8 bg-background/30" />
-          The multi-agent pipeline
-        </div>
-        <h2 className="mt-8 max-w-3xl font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
-          Every pursued visitor runs through a transparent chain of specialized agents.
-        </h2>
-        <p className="mt-5 max-w-xl text-background/60">
-          Each step is inspectable in the agent trace — inputs, outputs, and rationale — so you
-          always know why a recommendation exists.
-        </p>
+        <Reveal>
+          <div className="flex items-center gap-3 font-mono text-[0.7rem] uppercase tracking-[0.22em] text-background/50">
+            <span className="text-signal">03</span>
+            <span className="h-px w-8 bg-background/30" />
+            The multi-agent pipeline
+          </div>
+          <h2 className="mt-8 max-w-3xl font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
+            Every pursued visitor runs through a transparent chain of specialized agents.
+          </h2>
+          <p className="mt-5 max-w-xl text-background/60">
+            Each step is inspectable in the agent trace — inputs, outputs, and rationale — so you
+            always know why a recommendation exists.
+          </p>
+        </Reveal>
 
         <div className="mt-16 grid gap-px overflow-hidden rounded-lg border border-background/15 bg-background/15 md:grid-cols-3 lg:grid-cols-7">
           {PIPELINE.map((step, i) => (
-            <div
-              key={step.name}
-              className="group flex flex-col gap-4 bg-foreground p-6 transition-colors hover:bg-foreground/95"
-            >
-              <div className="flex items-center justify-between">
-                <step.icon className="h-5 w-5 text-background transition-colors group-hover:text-signal" />
-                <span className="font-mono text-xs text-signal/60">
-                  0{i + 1}
-                </span>
-              </div>
-              <h3 className="font-display text-base font-semibold leading-tight">
-                {step.name}
-              </h3>
-              <p className="text-xs leading-relaxed text-background/55">{step.detail}</p>
-            </div>
+            <Reveal key={step.name} delay={i * 70} className="h-full">
+              <SpotlightCard
+                spotColor="hsl(var(--signal) / 0.16)"
+                className="group h-full bg-foreground p-6 transition-colors hover:bg-foreground/95"
+              >
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <step.icon className="h-5 w-5 text-background transition-colors group-hover:text-signal" />
+                    <span className="font-mono text-xs text-signal/60">
+                      0{i + 1}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-base font-semibold leading-tight">
+                    {step.name}
+                  </h3>
+                  <p className="text-xs leading-relaxed text-background/55">{step.detail}</p>
+                </div>
+              </SpotlightCard>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -580,9 +610,11 @@ function PlaybookSection() {
   return (
     <section id="playbook" className="border-b border-border">
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
-        <SectionLabel index="04">Directed research</SectionLabel>
+        <Reveal>
+          <SectionLabel index="04">Directed research</SectionLabel>
+        </Reveal>
         <div className="mt-8 grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-          <div>
+          <Reveal delay={80}>
             <h2 className="font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
               Your Playbook tells agents where to look and what matters.
             </h2>
@@ -597,11 +629,11 @@ function PlaybookSection() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-          </div>
+          </Reveal>
 
-          <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+          <Reveal delay={160} className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
             {PLAYBOOK_CONTROLS.map((control) => (
-              <div key={control.title} className="bg-background p-7">
+              <SpotlightCard key={control.title} className="bg-background p-7">
                 <control.icon className="h-5 w-5" />
                 <h3 className="mt-5 font-display text-lg font-semibold tracking-tight">
                   {control.title}
@@ -609,9 +641,9 @@ function PlaybookSection() {
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {control.body}
                 </p>
-              </div>
+              </SpotlightCard>
             ))}
-          </div>
+          </Reveal>
         </div>
       </div>
     </section>
@@ -622,31 +654,52 @@ function Features() {
   return (
     <section id="features" className="border-b border-border">
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
-        <SectionLabel index="05">The platform</SectionLabel>
-        <div className="mt-8 flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <h2 className="max-w-2xl font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
-            Everything between the handshake and the handoff.
-          </h2>
-          <p className="max-w-sm text-muted-foreground">
-            A complete GTM execution surface — built around assisted judgment, not blind
-            automation.
-          </p>
-        </div>
+        <Reveal>
+          <SectionLabel index="05">The platform</SectionLabel>
+          <div className="mt-8 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <h2 className="max-w-2xl font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
+              Everything between the handshake and the handoff.
+            </h2>
+            <p className="max-w-sm text-muted-foreground">
+              A complete GTM execution surface — built around assisted judgment, not blind
+              automation.
+            </p>
+          </div>
+        </Reveal>
 
-        <div className="mt-14 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <div
-              key={feature.title}
-              className="group flex flex-col gap-4 bg-background p-7 transition-colors hover:bg-secondary/40"
-            >
-              <feature.icon className="h-5 w-5 text-foreground transition-colors group-hover:text-signal" />
-              <h3 className="font-display text-lg font-semibold tracking-tight">
-                {feature.title}
-              </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">{feature.body}</p>
-            </div>
-          ))}
-        </div>
+        <Reveal delay={120}>
+          <div className="mt-14 grid grid-flow-dense gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map((feature) => (
+              <SpotlightCard
+                key={feature.title}
+                className={cn(
+                  "group bg-background p-7 transition-colors hover:bg-secondary/40",
+                  feature.featured && "bg-dots sm:col-span-2"
+                )}
+              >
+                <div className="flex h-full flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <feature.icon className="h-5 w-5 text-foreground transition-colors group-hover:text-signal" />
+                    {feature.featured ? (
+                      <span className="h-1.5 w-1.5 bg-signal" aria-hidden="true" />
+                    ) : null}
+                  </div>
+                  <h3
+                    className={cn(
+                      "font-display font-semibold tracking-tight",
+                      feature.featured ? "text-xl" : "text-lg"
+                    )}
+                  >
+                    {feature.title}
+                  </h3>
+                  <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+                    {feature.body}
+                  </p>
+                </div>
+              </SpotlightCard>
+            ))}
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -657,7 +710,7 @@ function Trust() {
     <section id="trust" className="border-b border-border">
       <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-28">
         <div className="grid gap-12 md:grid-cols-[1fr_1.2fr] md:gap-20">
-          <div>
+          <Reveal>
             <SectionLabel index="06">Trust & review model</SectionLabel>
             <h2 className="mt-8 font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-tight">
               Assisted GTM execution. Never blind automation.
@@ -672,12 +725,14 @@ function Trust() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-          </div>
+          </Reveal>
 
           <ul className="flex flex-col">
             {TRUST.map((item, i) => (
-              <li
+              <Reveal
                 key={item}
+                as="li"
+                delay={i * 90}
                 className="flex items-start gap-4 border-t border-border py-5 last:border-b"
               >
                 <span className="mt-0.5 font-mono text-xs text-muted-foreground">
@@ -685,7 +740,7 @@ function Trust() {
                 </span>
                 <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-signal" />
                 <span className="text-base leading-relaxed text-foreground/85">{item}</span>
-              </li>
+              </Reveal>
             ))}
           </ul>
         </div>
@@ -699,14 +754,16 @@ function CtaBand() {
     <section className="dark bg-noise relative overflow-hidden border-b border-border bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-grid-dense [mask-image:radial-gradient(ellipse_at_center,black,transparent_78%)]" />
       <div className="relative z-10 mx-auto max-w-[1200px] px-6 py-24 text-center md:py-32">
-        <span className="inline-flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-signal animate-pulse-signal" />
-          Ready when you are
-        </span>
-        <h2 className="mx-auto mt-6 max-w-3xl font-display text-[clamp(2.25rem,6vw,4.5rem)] font-semibold leading-[0.98] tracking-tightest text-balance">
-          Know the room. Capture the conversation.{" "}
-          <span className="italic text-signal">Keep the judgment.</span>
-        </h2>
+        <Reveal>
+          <span className="inline-flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-signal animate-pulse-signal" />
+            Ready when you are
+          </span>
+          <h2 className="mx-auto mt-6 max-w-3xl font-display text-[clamp(2.25rem,6vw,4.5rem)] font-semibold leading-[0.98] tracking-tightest text-balance">
+            Know the room. Capture the conversation.{" "}
+            <span className="text-shimmer italic">Keep the judgment.</span>
+          </h2>
+        </Reveal>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Button asChild size="lg" shape="pill" variant="accent" className="glow-signal">
             <Link to="/app">

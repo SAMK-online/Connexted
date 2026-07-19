@@ -141,4 +141,42 @@
   .glow-signal {
     box-shadow: 0 0 24px hsl(var(--signal) / 0.3);
   }
+
+  /* Pattern library — theme-aware via --foreground, so they read in light
+     sections and inside `.dark` scopes without variants */
+  .bg-dots {
+    background-image: radial-gradient(hsl(var(--foreground) / 0.1) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+
+  .bg-hatch {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      hsl(var(--foreground) / 0.05) 0 1px,
+      transparent 1px 10px
+    );
+  }
+
+  /* Animated sheen sweeping across signal-colored display text */
+  .text-shimmer {
+    background: linear-gradient(
+      110deg,
+      hsl(var(--signal)) 38%,
+      hsl(74 95% 78%) 50%,
+      hsl(var(--signal)) 62%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 5s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .text-shimmer {
+      animation: none;
+      background: none;
+      color: hsl(var(--signal));
+    }
+  }
 }

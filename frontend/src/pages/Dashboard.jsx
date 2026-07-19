@@ -34,6 +34,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { NumberTicker } from "@/components/fx/NumberTicker";
+import { SpotlightCard } from "@/components/fx/SpotlightCard";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES = {
@@ -287,18 +289,22 @@ export default function Dashboard() {
 
 function StatCard({ icon: Icon, label, value }) {
   return (
-    <Card className="group transition-colors hover:border-foreground/30">
-      <CardContent className="flex items-center justify-between p-5">
-        <div>
-          <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">
-            {label}
-          </p>
-          <p className="mt-2 font-display text-3xl font-semibold tracking-tight">{value}</p>
-        </div>
-        <div className="grid h-10 w-10 place-items-center rounded-md border border-border bg-secondary/50 transition-colors group-hover:border-signal/50">
-          <Icon className="h-5 w-5 transition-colors group-hover:text-signal" />
-        </div>
-      </CardContent>
+    <Card className="group overflow-hidden transition-colors hover:border-foreground/30">
+      <SpotlightCard>
+        <CardContent className="flex items-center justify-between p-5">
+          <div>
+            <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">
+              {label}
+            </p>
+            <p className="mt-2 font-display text-3xl font-semibold tracking-tight">
+              <NumberTicker value={value} />
+            </p>
+          </div>
+          <div className="grid h-10 w-10 place-items-center rounded-md border border-border bg-secondary/50 transition-colors group-hover:border-signal/50">
+            <Icon className="h-5 w-5 transition-colors group-hover:text-signal" />
+          </div>
+        </CardContent>
+      </SpotlightCard>
     </Card>
   );
 }
