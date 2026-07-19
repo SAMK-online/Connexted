@@ -1,15 +1,17 @@
-import { NavLink, Outlet, Link } from "react-router-dom";
+import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
 import {
   BookOpen,
   FileText,
   FolderOpen,
   Radar,
   Inbox,
+  LogOut,
   Settings2,
   ArrowUpRight,
   MessageSquareText
 } from "lucide-react";
 import { Wordmark } from "@/components/Wordmark";
+import { useAuth } from "@/lib/auth.jsx";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -20,6 +22,47 @@ const NAV = [
   { to: "/app/docs", label: "Docs", icon: FileText, end: false },
   { to: "/app/settings", label: "Settings", icon: Settings2, end: false }
 ];
+
+function IdentityCard() {
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  if (!isAuthenticated || !user) {
+    return (
+      <Link
+        to="/login"
+        className="flex items-center justify-between rounded-lg border border-background/15 bg-background/5 p-4 text-sm text-background/70 transition-colors hover:text-background"
+      >
+        Sign in to your workspace
+        <ArrowUpRight className="h-4 w-4" />
+      </Link>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-background/15 bg-background/5 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-background">{user.name}</p>
+          <p className="mt-0.5 truncate font-mono text-[0.62rem] uppercase tracking-[0.16em] text-background/50">
+            {user.organization_name} · {user.role}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            navigate("/");
+          }}
+          title="Sign out"
+          className="rounded-md p-1.5 text-background/50 transition-colors hover:bg-background/10 hover:text-background"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function AppLayout() {
   return (
@@ -61,6 +104,7 @@ export default function AppLayout() {
         </div>
 
         <div className="flex flex-col gap-3">
+          <IdentityCard />
           <div className="rounded-lg border border-background/15 bg-background/5 p-4">
             <div className="flex items-center gap-2 text-background/80">
               <MessageSquareText className="h-4 w-4" />

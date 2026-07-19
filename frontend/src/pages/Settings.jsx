@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Palette, Plug, Save, Shield } from "lucide-react";
+import { CheckCircle2, Copy, Palette, Plug, Save, Shield, UsersRound } from "lucide-react";
 import {
+  createInviteCode,
   getHubSpotStatus,
   hubspotInstallUrl,
   listStyleProfiles,
   updateStyleProfile
 } from "../lib/api.js";
+import { useAuth } from "../lib/auth.jsx";
 
 const DEMO_ORG = "demo-org";
 import { PageHeader } from "@/components/PageHeader";
@@ -162,6 +164,7 @@ export default function Settings() {
         </Card>
 
         <div className="grid gap-6">
+          <TeamAccessCard />
           <HubSpotCard />
           {PENDING_PANELS.map((panel) => (
             <Card key={panel.title}>
@@ -180,6 +183,89 @@ export default function Settings() {
         </div>
       </div>
     </section>
+  );
+}
+
+function TeamAccessCard() {
+  const { user, isAuthenticated } = useAuth();
+  const [copied, setCopied] = useState(false);
+  const inviteMutation = useMutation({ mutationFn: createInviteCode });
+  const invite = inviteMutation.data;
+  const isAdmin = user && (user.role === "admin" || user.role === "manager");
+  const joinUrl = invite ? `${window.location.origin}/join?code=${invite.code}` : "";
+
+  async function copyJoinUrl() {
+    try {
+      await navigator.clipboard.writeText(joinUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <UsersRound className="h-5 w-5" />
+        <CardTitle>Team access</CardTitle>
+        <CardDescription>
+          {isAuthenticated
+            ? `Invite reps into the ${user.organization_name} workspace with a join code.`
+            : "Sign in as a workspace admin to invite reps with a join code."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {!isAuthenticated ? (
+          <div className="rounded-md border border-dashed border-border bg-secondary/30 px-4 py-3 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
+            Demo mode — no workspace session
+          </div>
+        ) : !isAdmin ? (
+          <div className="rounded-md border border-dashed border-border bg-secondary/30 px-4 py-3 text-sm text-muted-foreground">
+            Only workspace admins can generate invite codes. Ask your admin for one.
+          </div>
+        ) : (
+          <>
+            {invite ? (
+              <div className="rounded-md border border-signal/40 bg-secondary/30 p-4">
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">
+                  Active invite code
+                </p>
+                <p className="mt-2 font-mono text-xl font-semibold tracking-widest">
+                  {invite.code}
+                </p>
+                <button
+                  type="button"
+                  onClick={copyJoinUrl}
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  {copied ? "Copied!" : joinUrl}
+                </button>
+              </div>
+            ) : null}
+            <Button
+              variant={invite ? "outline" : "default"}
+              disabled={inviteMutation.isPending}
+              onClick={() => inviteMutation.mutate()}
+            >
+              {inviteMutation.isPending
+                ? "Generating…"
+                : invite
+                  ? "Generate new code (revokes current)"
+                  : "Generate invite code"}
+            </Button>
+            {inviteMutation.error ? (
+              <p className="text-sm text-destructive">{inviteMutation.error.message}</p>
+            ) : null}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Reps open the join link (or enter the code at /join) to create their own
+              sign-in. Generating a new code deactivates the previous one.
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

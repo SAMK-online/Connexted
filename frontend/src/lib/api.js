@@ -1,9 +1,37 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_AUTH_TOKEN = import.meta.env.VITE_API_AUTH_TOKEN || "";
+
+export const SESSION_STORAGE_KEY = "connexted.session";
+
+export function getStoredSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function storeSession(session) {
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+}
+
+export function clearSession() {
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
+function authHeader() {
+  // A signed-in user's session token wins over the legacy build-time shared token.
+  const session = getStoredSession();
+  const token = session?.token || API_AUTH_TOKEN;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...authHeader(),
       ...(options.headers || {})
     },
     ...options
@@ -15,6 +43,30 @@ async function request(path, options = {}) {
   }
 
   return response.json();
+}
+
+export function getAuthConfig() {
+  return request("/api/auth/config");
+}
+
+export function registerOrganization(payload) {
+  return request("/api/auth/register", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function login(payload) {
+  return request("/api/auth/login", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function joinTeam(payload) {
+  return request("/api/auth/join", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function getProfile() {
+  return request("/api/auth/me");
+}
+
+export function createInviteCode() {
+  return request("/api/auth/invite", { method: "POST" });
 }
 
 export function listCaptures() {
