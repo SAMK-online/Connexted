@@ -4,6 +4,16 @@ CONNEXTed is a WhatsApp-first GTM workflow platform for sales and partnership te
 
 It turns a rep’s event workflow into a structured, reviewable GTM system: discover relevant events and public prospects before attending, then send a business card image and quick conversation notes through WhatsApp after conversations to receive enriched reports, GTM signals, pitch strategy, and outreach drafts ready for human review.
 
+## Documentation
+
+| Guide | Purpose |
+| --- | --- |
+| [Getting Started](docs/GETTING-STARTED.md) | Run the full stack locally in mock mode — no API keys needed |
+| [Configuration Reference](docs/CONFIGURATION.md) | Every env var; switching each provider from mock to live |
+| [Deployment Runbook](docs/DEPLOYMENT.md) | Docker deployment, hardening checklist, known limitations |
+| [CRM Adapters](docs/CRM-ADAPTERS.md) | Adopting with Salesforce, Pipedrive, Zoho, or Dynamics instead of HubSpot |
+| [Pilot Onboarding](docs/PILOT-ONBOARDING.md) | First-customer week-one checklist and feedback plan |
+
 ## Product Vision
 
 Sales and partnership teams lose momentum when promising conversations stay trapped in notebooks, badge scans, camera rolls, and scattered CRM notes. CONNEXTed is designed to make the capture-to-follow-up process fast, contextual, and trustworthy without removing human judgment.
@@ -106,6 +116,9 @@ To run against Supabase/Postgres, set:
 PERSISTENCE_BACKEND=postgres
 DATABASE_URL=postgresql+asyncpg://...
 ```
+
+In production, also set `API_AUTH_TOKEN` to protect `/api/*` endpoints (see
+[docs/CONFIGURATION.md](docs/CONFIGURATION.md)).
 
 The database schema lives in `supabase/migrations`. The API still supports mock providers
 while using Postgres persistence, so capture/report/review/Event Radar flows can be tested
