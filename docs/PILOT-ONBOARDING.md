@@ -15,6 +15,7 @@ CONNEXTed's bet: reps capture more leads, faster, with better follow-up, when th
 
 ## Day one with the customer (~45 min working session)
 
+0. **Set up their workspace**: the customer's lead registers the organization at `/register` (they become admin), generates an invite code in **Settings → Team access**, and each rep creates their own account via the `/join` link. Everyone signs in at `/login` from then on.
 1. **Configure the Playbook together** (`/app/playbook`) — this is the highest-leverage step; strategy and draft quality follow directly from it:
    - ICP and target personas
    - Products/services offered and target sectors (with sector positioning notes)

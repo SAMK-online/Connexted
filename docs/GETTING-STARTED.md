@@ -82,6 +82,17 @@ docker compose -f infra/docker-compose.yml up --build
 - Backend: http://localhost:8000
 - Redis: localhost:6379 (persistence via AOF volume)
 
+## Optional: try enterprise + employee login
+
+Auth is off by default locally (the app works anonymously in demo mode), but the full flow is available:
+
+1. Visit `/register` — create a company workspace; you become its **admin**.
+2. **Settings → Team access** — generate an invite code.
+3. Open `/join?code=JOIN-…` in a private window — create an employee (**rep**) account.
+4. Captures you create while signed in are scoped to your organization.
+
+To *require* login (as production does), set `AUTH_REQUIRED=true` and an `AUTH_JWT_SECRET` in `.env` and restart the backend. Note: with in-memory persistence, accounts reset on restart — use the Postgres backend for durable accounts.
+
 ## Where to go next
 
 - Turn individual providers live (Twilio, OCR, enrichment, HubSpot): [Configuration Reference](CONFIGURATION.md)
