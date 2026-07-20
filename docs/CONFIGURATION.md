@@ -35,7 +35,7 @@ Local override file: `frontend/.env.local`.
 | `DATABASE_URL` | `postgresql+asyncpg://...` connection string. Local Supabase: port `54322`; hosted Supabase: use the **connection pooler** string |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` | Reserved for Supabase Auth/Storage/Realtime integration |
 
-Schema lives in `supabase/migrations/` (14 migrations incl. RLS policies). Apply with `supabase db push`.
+Schema lives in `supabase/migrations/` (15 migrations incl. RLS policies and auth tables). Apply with `supabase db push`.
 
 ## Provider matrix — mock → live
 

@@ -31,7 +31,7 @@ Containers: `backend/Dockerfile` (non-root, healthcheck on `/health`), `frontend
 - [ ] `HUBSPOT_TOKEN_ENCRYPTION_KEY` generated and backed up (losing it invalidates stored CRM connections)
 
 **Database:**
-- [ ] `supabase link --project-ref <ref>` then `supabase db push` (applies all 14 migrations, incl. RLS)
+- [ ] `supabase link --project-ref <ref>` then `supabase db push` (applies all 15 migrations, incl. RLS and the `app_users`/`org_invites` auth tables)
 - [ ] Verify: connect and check `select count(*) from public.crm_connections;` runs
 
 **External services:**
@@ -72,10 +72,11 @@ TLS termination at the proxy; containers speak plain HTTP internally.
 
 1. `curl https://api.<domain>/health` → `{"status":"ok","env":"production"}`
 2. `curl https://api.<domain>/api/captures` → **401** (auth enforced)
-3. `curl -H "Authorization: Bearer $API_AUTH_TOKEN" https://api.<domain>/api/captures` → `[]`
-4. Open the app, create a test capture, confirm it reaches **review ready**
-5. Connect HubSpot from Settings, approve a sync, verify the contact/company/task in the portal
-6. Send a WhatsApp message to the Twilio number, confirm a capture appears
+3. Open the app → `/register`: create the customer's organization + admin account
+4. Settings → **Team access**: generate an invite code, open the `/join` link in a private window, create a rep account, sign in
+5. Create a test capture as the rep, confirm it reaches **review ready** and is visible only inside this workspace
+6. Connect HubSpot from Settings, approve a sync, verify the contact/company/task in the portal
+7. Send a WhatsApp message to the Twilio number, confirm a capture appears (lands under the demo identity — see limitations)
 
 ## Rollback
 
@@ -92,11 +93,11 @@ Database migrations are additive so far; avoid destructive migrations without a 
 
 These are accepted for a supervised pilot and on the roadmap:
 
-1. **Single-tenant demo identity.** `organization_id`/`rep_id` default to `demo-org`/`demo-rep`; there is no per-user login yet. `API_AUTH_TOKEN` gates access to the whole workspace — treat the app URL + token as team-internal. Supabase Auth integration is the planned fix.
-2. **Shared token is in the frontend bundle.** Anyone who can load the app can extract it. Acceptable behind a private URL for a pilot; not a substitute for real auth.
+1. **Org scoping covers the core capture surface.** Enterprise/employee login exists (register → invite → join), and captures are created, listed, and fetched strictly within the signed-in user's organization. Event Radar, social candidates, playbooks, and style profiles are not yet org-partitioned — deploy **one instance per pilot customer** until they are.
+2. **WhatsApp intake maps to the demo identity.** The Twilio webhook has no user session; inbound captures land under the demo org rather than the sender's rep account. Phone-number → rep mapping is the planned fix; for the pilot, web capture is the authenticated path.
 3. **In-process workflow execution.** Workflows run as FastAPI background tasks, not on the Redis worker (still a placeholder). Run **one backend replica**; a crash mid-workflow leaves a capture `running` — use the capture's **Retry** action.
 4. **Template-based generation.** Strategy/drafts come from deterministic templates + playbook context, not yet the LLM agent graph. Output is conservative by design.
-5. **No rate limiting** beyond what the reverse proxy provides — enable it at the proxy for public exposure.
+5. **No rate limiting or account lockout** beyond what the reverse proxy provides — enable proxy rate limiting on `/api/auth/*` especially before public exposure.
 
 ## Monitoring for a pilot
 
