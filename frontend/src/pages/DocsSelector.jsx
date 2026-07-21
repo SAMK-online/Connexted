@@ -9,7 +9,8 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
-  Target
+  Target,
+  UsersRound
 } from "lucide-react";
 import { Wordmark } from "@/components/Wordmark";
 import { PageHeader } from "@/components/PageHeader";
@@ -47,6 +48,12 @@ const GUIDE_GROUPS = [
 
 const QUICK_PATHS = [
   {
+    title: "I am onboarding a pilot customer",
+    icon: UsersRound,
+    description: "Use the first-customer checklist for setup, day-one training, feedback, and support.",
+    page: "onboarding"
+  },
+  {
     title: "I am preparing before an event",
     icon: Search,
     description: "Start with Event Radar, confirmed visitor deep dives, and social intent.",
@@ -74,6 +81,7 @@ const QUICK_PATHS = [
 
 export default function DocsSelector({ standalone = false }) {
   const guidePath = standalone ? "/docs/guide" : "/app/docs/guide";
+  const onboardingPath = standalone ? "/docs/onboarding" : "/app/docs/onboarding";
 
   return (
     <div className={standalone ? "min-h-screen bg-background" : ""}>
@@ -112,7 +120,12 @@ export default function DocsSelector({ standalone = false }) {
             </CardHeader>
             <CardContent className="grid gap-2">
               {QUICK_PATHS.map((path) => (
-                <QuickPath key={path.title} path={path} guidePath={guidePath} />
+                <QuickPath
+                  key={path.title}
+                  path={path}
+                  guidePath={guidePath}
+                  onboardingPath={onboardingPath}
+                />
               ))}
               <Button asChild className="mt-3" shape="pill">
                 <Link to={guidePath}>
@@ -180,11 +193,12 @@ function GuideGroup({ group, guidePath }) {
   );
 }
 
-function QuickPath({ path, guidePath }) {
+function QuickPath({ path, guidePath, onboardingPath }) {
   const Icon = path.icon;
+  const to = path.page === "onboarding" ? onboardingPath : `${guidePath}#${path.target}`;
   return (
     <Link
-      to={`${guidePath}#${path.target}`}
+      to={to}
       className="group grid gap-2 rounded-md border border-border bg-secondary/20 p-3 transition-colors hover:border-foreground/30"
     >
       <div className="flex items-center gap-2">

@@ -8,6 +8,7 @@ import DocsSelector from "./pages/DocsSelector.jsx";
 import EventRadar from "./pages/EventRadar.jsx";
 import JoinTeam from "./pages/JoinTeam.jsx";
 import Login from "./pages/Login.jsx";
+import OnboardingDocs from "./pages/OnboardingDocs.jsx";
 import Playbook from "./pages/Playbook.jsx";
 import Register from "./pages/Register.jsx";
 import Report from "./pages/Report.jsx";
@@ -35,6 +36,7 @@ export default function App() {
       <Route path="/join" element={<JoinTeam />} />
       <Route path="/docs" element={<DocsSelector standalone />} />
       <Route path="/docs/guide" element={<Docs standalone />} />
+      <Route path="/docs/onboarding" element={<OnboardingDocs standalone />} />
       <Route
         path="/app"
         element={
@@ -49,6 +51,7 @@ export default function App() {
         <Route path="playbook" element={<Playbook />} />
         <Route path="docs" element={<DocsSelector />} />
         <Route path="docs/guide" element={<Docs />} />
+        <Route path="docs/onboarding" element={<OnboardingDocs />} />
         <Route path="captures/:captureId" element={<Report />} />
         <Route path="settings" element={<Settings />} />
       </Route>

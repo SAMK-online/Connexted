@@ -298,6 +298,7 @@ const GUARDRAILS = [
 
 export default function Docs({ standalone = false }) {
   const selectorPath = standalone ? "/docs" : "/app/docs";
+  const onboardingPath = standalone ? "/docs/onboarding" : "/app/docs/onboarding";
 
   return (
     <div className={standalone ? "min-h-screen bg-background" : ""}>
@@ -312,6 +313,9 @@ export default function Docs({ standalone = false }) {
               <Badge variant="outline">Feature guide</Badge>
               <Button asChild variant="outline" size="sm">
                 <Link to={selectorPath}>Docs index</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to={onboardingPath}>Onboarding</Link>
               </Button>
             </div>
           }
