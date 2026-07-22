@@ -4,6 +4,7 @@ import {
   BookOpenCheck,
   CheckCircle2,
   ClipboardCheck,
+  FileText,
   LifeBuoy,
   ListChecks,
   MessageSquareWarning,
@@ -23,6 +24,57 @@ const BEFORE_DAY_ONE = [
   "Choose the week-one CRM path: HubSpot, a custom adapter, or CSV export.",
   "Have pilot reps join the Twilio WhatsApp sandbox if WhatsApp capture is part of the trial.",
   "Create one test capture yourself and walk it through report review, draft approval, and CRM sync or export."
+];
+
+const GETTING_STARTED_REQUIREMENTS = [
+  {
+    title: "Workspace roster",
+    items: [
+      "Company name and primary admin",
+      "Rep names and work emails",
+      "Who should approve CRM syncs or exports"
+    ]
+  },
+  {
+    title: "Pilot event context",
+    items: [
+      "Target event name and public event URL",
+      "Speaker, sponsor, exhibitor, or attendee pages",
+      "Three to five real lead notes or business-card examples"
+    ]
+  },
+  {
+    title: "GTM playbook inputs",
+    items: [
+      "Products or services being sold",
+      "Target sectors, ICP, and buyer personas",
+      "Priority signals, proof points, disqualifiers, and trusted sources"
+    ]
+  },
+  {
+    title: "Integration access",
+    items: [
+      "CRM owner and HubSpot access path, if syncing",
+      "WhatsApp sandbox phone numbers, if using Twilio intake",
+      "Preferred export format if CRM sync waits until later"
+    ]
+  },
+  {
+    title: "Outreach standards",
+    items: [
+      "Tone rules and banned phrases",
+      "Preferred CTA or meeting ask",
+      "Claims reps are comfortable referencing in follow-up"
+    ]
+  },
+  {
+    title: "Success criteria",
+    items: [
+      "Expected weekly capture volume",
+      "Current time from conversation to follow-up",
+      "Feedback owner and weekly review cadence"
+    ]
+  }
 ];
 
 const DAY_ONE_STEPS = [
@@ -124,6 +176,7 @@ export default function OnboardingDocs({ standalone = false }) {
         />
 
         <PilotProof />
+        <GettingStartedRequirements />
         <QuickLinks guidePath={guidePath} />
         <BeforeDayOne />
         <DayOneSession />
@@ -198,6 +251,34 @@ function PilotProof() {
           <TimelineItem label="Pilot run" value="Route every event or meeting lead through the product for clean signal." />
         </CardContent>
       </Card>
+    </section>
+  );
+}
+
+function GettingStartedRequirements() {
+  return (
+    <section className="mt-10">
+      <SectionHeading
+        icon={FileText}
+        eyebrow="Client checklist"
+        title="What clients need to gather before kickoff"
+        description="Share this list before the first working session so the customer can arrive with the names, source material, access, and GTM context needed to make the pilot useful."
+      />
+      <div className="mt-6 grid gap-px overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-3">
+        {GETTING_STARTED_REQUIREMENTS.map((group) => (
+          <div key={group.title} className="bg-background p-5">
+            <h3 className="font-display text-lg font-semibold tracking-tight">{group.title}</h3>
+            <ul className="mt-4 grid gap-2 text-sm text-muted-foreground">
+              {group.items.map((item) => (
+                <li key={item} className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-signal" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
